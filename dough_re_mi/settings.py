@@ -1,12 +1,17 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = 'django-insecure-mu@bhbfhm@ybcy=t1_(-)+0-3n%4sqe)a2v(x!hz_cmz=)k2pm'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-mu@bhbfhm@ybcy=t1_(-)+0-3n%4sqe)a2v(x!hz_cmz=)k2pm')
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 
@@ -55,10 +60,22 @@ WSGI_APPLICATION = 'dough_re_mi.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# Database configuration - supports both SQLite and PostgreSQL
+DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
+DB_NAME = os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3')
+DB_USER = os.getenv('DB_USER', '')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '5432')
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': DB_ENGINE,
+        'NAME': DB_NAME,
+        'USER': DB_USER if DB_ENGINE == 'django.db.backends.postgresql' else '',
+        'PASSWORD': DB_PASSWORD if DB_ENGINE == 'django.db.backends.postgresql' else '',
+        'HOST': DB_HOST if DB_ENGINE == 'django.db.backends.postgresql' else '',
+        'PORT': DB_PORT if DB_ENGINE == 'django.db.backends.postgresql' else '',
     }
 }
 
