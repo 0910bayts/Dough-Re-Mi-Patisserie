@@ -1,0 +1,17 @@
+{% extends 'staff/base.html' %}
+{% load static %}
+
+{% block staff_content %}
+    <h1 class="mb-4">Delete Product</h1>
+    
+    <div class="alert alert-warning">
+        <h4>Are you sure you want to delete "{{ product.name }}"?</h4>
+        <p>This action cannot be undone.</p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="{% url 'staff_products' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+{% endblock %}

@@ -7,9 +7,11 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm
+from django.core.paginator import Paginator
 
-from bakery.models import Product, CartItem, Order, Receipt, UserProfile
-from bakery.forms import SignUpForm, DeliveryForm
+from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog
+from bakery.forms import SignUpForm, DeliveryForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm
+from bakery.decorators import staff_required, admin_required
 
 def index_view(request):
     featured_products = Product.objects.all()[:3]
@@ -36,7 +38,8 @@ def signup_view(request):
             
             UserProfile.objects.create(
                 user=user,
-                contactnumber=form.cleaned_data['contactnumber']
+                contactnumber=form.cleaned_data['contactnumber'],
+                role='customer'  # Set default role to customer
             )
             
             # Auto log in user
@@ -60,6 +63,14 @@ def signup_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
+        # Redirect based on role
+        if request.user.is_superuser:
+            return redirect('/admin/')
+        elif hasattr(request.user, 'profile'):
+            if request.user.profile.role == 'staff':
+                return redirect('staff_dashboard')
+            elif request.user.profile.role == 'customer':
+                return redirect('index')
         return redirect('index')
     
     if request.method == 'POST':
@@ -70,6 +81,15 @@ def login_view(request):
         if user is not None:
             auth_login(request, user)
             messages.success(request, "Login successful!")
+            
+            # Redirect based on role
+            if user.is_superuser:
+                return redirect('/admin/')
+            elif hasattr(user, 'profile'):
+                if user.profile.role == 'staff':
+                    return redirect('staff_dashboard')
+                elif user.profile.role == 'customer':
+                    return redirect('index')
             return redirect('index')
         else:
             messages.error(request, "Incorrect Username or Password!")
@@ -82,8 +102,11 @@ def logout_view(request):
     return redirect('index')
 
 def menu_view(request):
-    products = Product.objects.all()
-    return render(request, 'menu.html', {'products': products})
+    products = Product.objects.filter(is_available=True)
+    paginator = Paginator(products, 12)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'menu.html', {'page_obj': page_obj, 'products': page_obj})
 
 @login_required
 def cart_get(request):
@@ -238,3 +261,209 @@ def set_password_view(request):
         form = SetPasswordForm(request.user)
     
     return render(request, 'set_password.html', {'form': form})
+
+# Staff Dashboard Views
+@staff_required
+def staff_dashboard(request):
+    # Get statistics
+    total_products = Product.objects.count()
+    total_orders = Order.objects.count()
+    pending_orders = Order.objects.filter(status='pending').count()
+    confirmed_orders = Order.objects.filter(status='confirmed').count()
+    ready_orders = Order.objects.filter(status='ready').count()
+    completed_orders = Order.objects.filter(status='completed').count()
+    
+    context = {
+        'total_products': total_products,
+        'total_orders': total_orders,
+        'pending_orders': pending_orders,
+        'confirmed_orders': confirmed_orders,
+        'ready_orders': ready_orders,
+        'completed_orders': completed_orders,
+    }
+    return render(request, 'staff/dashboard.html', context)
+
+@staff_required
+def staff_products(request):
+    products = Product.objects.all().order_by('name')
+    paginator = Paginator(products, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'staff/products.html', {'page_obj': page_obj})
+
+@staff_required
+def staff_product_create(request):
+    if request.method == 'POST':
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save()
+            # Log audit
+            AuditLog.objects.create(
+                user=request.user,
+                action='product_create',
+                description=f"Created product: {product.name}",
+                product_id=product.id,
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            messages.success(request, "Product created successfully!")
+            return redirect('staff_products')
+    else:
+        form = ProductForm()
+    
+    return render(request, 'staff/product_form.html', {'form': form, 'title': 'Add Product'})
+
+@staff_required
+def staff_product_edit(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == 'POST':
+        # Handle image upload separately
+        form_data = request.POST.copy()
+        if 'image' not in request.FILES:
+            # Keep existing image if no new image uploaded
+            form_data['image'] = product.image
+        form = ProductForm(form_data, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            # Log audit
+            AuditLog.objects.create(
+                user=request.user,
+                action='product_edit',
+                description=f"Edited product: {product.name}",
+                product_id=product.id,
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            messages.success(request, "Product updated successfully!")
+            return redirect('staff_products')
+    else:
+        form = ProductForm(instance=product)
+    
+    return render(request, 'staff/product_form.html', {'form': form, 'title': 'Edit Product', 'product': product})
+
+@staff_required
+def staff_product_delete(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == 'POST':
+        product_name = product.name
+        product.delete()
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='product_delete',
+            description=f"Deleted product: {product_name}",
+            product_id=product_id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        messages.success(request, "Product deleted successfully!")
+        return redirect('staff_products')
+    
+    return render(request, 'staff/product_confirm_delete.html', {'product': product})
+
+@staff_required
+def staff_orders(request):
+    orders = Order.objects.all().select_related('user').order_by('-ordered_at')
+    paginator = Paginator(orders, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'staff/orders.html', {'page_obj': page_obj})
+
+@staff_required
+def staff_order_detail(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    
+    if request.method == 'POST':
+        form = OrderStatusForm(request.POST, instance=order)
+        if form.is_valid():
+            old_status = order.status
+            form.save()
+            # Log audit
+            AuditLog.objects.create(
+                user=request.user,
+                action='order_status_update',
+                description=f"Updated order {order.id} status from {old_status} to {order.status}",
+                order_id=order.id,
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            messages.success(request, "Order status updated successfully!")
+            return redirect('staff_orders')
+    else:
+        form = OrderStatusForm(instance=order)
+    
+    return render(request, 'staff/order_detail.html', {'order': order, 'form': form})
+
+# Admin Views for Staff Management
+@admin_required
+def admin_staff_list(request):
+    staff_users = User.objects.filter(profile__role='staff').select_related('profile')
+    
+    return render(request, 'admin/staff_list.html', {'staff_users': staff_users})
+
+@admin_required
+def admin_staff_create(request):
+    if request.method == 'POST':
+        form = StaffCreateForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Log audit
+            AuditLog.objects.create(
+                user=request.user,
+                action='staff_create',
+                description=f"Created staff account: {user.email}",
+                target_user_id=user.id,
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            messages.success(request, "Staff account created successfully!")
+            return redirect('admin_staff_list')
+    else:
+        form = StaffCreateForm()
+    
+    return render(request, 'admin/staff_form.html', {'form': form, 'title': 'Create Staff Account'})
+
+@admin_required
+def admin_staff_edit(request, user_id):
+    user = get_object_or_404(User, id=user_id, profile__role='staff')
+    
+    if request.method == 'POST':
+        form = StaffEditForm(request.POST, instance=user)
+        if form.is_valid():
+            old_active = user.profile.is_active
+            form.save()
+            # Log audit
+            action = 'staff_activate' if form.cleaned_data['is_active'] and not old_active else 'staff_deactivate'
+            if old_active != form.cleaned_data['is_active']:
+                AuditLog.objects.create(
+                    user=request.user,
+                    action=action,
+                    description=f"{'Activated' if form.cleaned_data['is_active'] else 'Deactivated'} staff account: {user.email}",
+                    target_user_id=user.id,
+                    ip_address=request.META.get('REMOTE_ADDR')
+                )
+            messages.success(request, "Staff account updated successfully!")
+            return redirect('admin_staff_list')
+    else:
+        form = StaffEditForm(instance=user)
+    
+    return render(request, 'admin/staff_form.html', {'form': form, 'title': 'Edit Staff Account', 'user': user})
+
+@admin_required
+def admin_staff_delete(request, user_id):
+    user = get_object_or_404(User, id=user_id, profile__role='staff')
+    
+    if request.method == 'POST':
+        user_email = user.email
+        user.delete()
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='staff_deactivate',
+            description=f"Deleted staff account: {user_email}",
+            target_user_id=user_id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        messages.success(request, "Staff account deleted successfully!")
+        return redirect('admin_staff_list')
+    
+    return render(request, 'admin/staff_confirm_delete.html', {'user': user})

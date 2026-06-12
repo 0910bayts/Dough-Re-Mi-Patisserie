@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Staff Management - Dough Re Mi Patisserie{% endblock %}
+
+{% block content %}
+    <section>
+    <div class="registration">
+        <h1>Staff Management</h1>
+        
+        <div class="mb-4">
+            <a href="{% url 'admin_staff_create' %}" class="btn btn-primary" style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">Create Staff Account</a>
+        </div>
+        
+        {% if messages %}
+            <div class="alert alert-success">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for staff_user in staff_users %}
+                    <tr>
+                        <td>{{ staff_user.get_full_name }}</td>
+                        <td>{{ staff_user.email }}</td>
+                        <td>{{ staff_user.profile.contactnumber }}</td>
+                        <td>
+                            {% if staff_user.profile.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'admin_staff_edit' staff_user.id %}" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="{% url 'admin_staff_delete' staff_user.id %}" class="btn btn-sm btn-danger">Delete</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No staff accounts found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </section>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'staff/base.html' %}
+{% load static %}
+
+{% block staff_content %}
+    <h1 class="mb-4">Orders</h1>
+    
+    {% if messages %}
+        <div class="alert alert-success">
+            {% for message in messages %}
+                {{ message }}
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in page_obj %}
+                <tr>
+                    <td>{{ order.id }}</td>
+                    <td>{{ order.user.get_full_name }}</td>
+                    <td>{{ order.user.email }}</td>
+                    <td>{{ order.item_name }}</td>
+                    <td>₱{{ order.item_price }}</td>
+                    <td>{{ order.ordered_at|date:"M d, Y" }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if order.status == 'pending' %}bg-warning
+                            {% elif order.status == 'confirmed' %}bg-info
+                            {% elif order.status == 'preparing' %}bg-primary
+                            {% elif order.status == 'ready' %}bg-success
+                            {% elif order.status == 'completed' %}bg-secondary
+                            {% elif order.status == 'cancelled' %}bg-danger
+                            {% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'staff_order_detail' order.id %}" class="btn btn-sm btn-primary" style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">View Details</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">No orders found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item active"><a class="page-link" href="#">{{ page_obj.number }}</a></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% endblock %}

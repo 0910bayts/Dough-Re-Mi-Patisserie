@@ -14,3 +14,24 @@ class RequirePasswordMiddleware:
         
         response = self.get_response(request)
         return response
+
+class RoleBasedRedirectMiddleware:
+    """
+    Middleware to redirect users based on their role after login.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Only apply to login redirect
+        if request.path == '/login.php' and request.user.is_authenticated:
+            if request.user.is_superuser:
+                return redirect('/admin/')
+            elif hasattr(request.user, 'profile'):
+                if request.user.profile.role == 'staff':
+                    return redirect('staff_dashboard')
+                elif request.user.profile.role == 'customer':
+                    return redirect('index')
+        
+        response = self.get_response(request)
+        return response

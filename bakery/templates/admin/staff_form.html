@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Dough Re Mi Patisserie{% endblock %}
+
+{% block content %}
+    <section>
+    <div class="registration">
+        <h1>{{ title }}</h1>
+        
+        {% if messages %}
+            <div class="alert alert-success">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <form method="post" class="registration">
+            {% csrf_token %}
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label for="{{ form.email.id_for_label }}" style="display: block; margin-bottom: 5px;"><h4>{{ form.email.label }}</h4></label>
+                    {{ form.email }}
+                </div>
+                {% if form.password %}
+                <div>
+                    <label for="{{ form.password.id_for_label }}" style="display: block; margin-bottom: 5px;"><h4>{{ form.password.label }}</h4></label>
+                    {{ form.password }}
+                </div>
+                {% endif %}
+                {% if form.first_name %}
+                <div>
+                    <label for="{{ form.first_name.id_for_label }}" style="display: block; margin-bottom: 5px;"><h4>{{ form.first_name.label }}</h4></label>
+                    {{ form.first_name }}
+                </div>
+                {% endif %}
+                {% if form.last_name %}
+                <div>
+                    <label for="{{ form.last_name.id_for_label }}" style="display: block; margin-bottom: 5px;"><h4>{{ form.last_name.label }}</h4></label>
+                    {{ form.last_name }}
+                </div>
+                {% endif %}
+                {% if form.contactnumber %}
+                <div>
+                    <label for="{{ form.contactnumber.id_for_label }}" style="display: block; margin-bottom: 5px;"><h4>{{ form.contactnumber.label }}</h4></label>
+                    {{ form.contactnumber }}
+                </div>
+                {% endif %}
+                {% if form.is_active %}
+                <div>
+                    <label for="{{ form.is_active.id_for_label }}" style="display: block; margin-bottom: 5px;"><h4>{{ form.is_active.label }}</h4></label>
+                    {{ form.is_active }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">Save</button>
+                <a href="{% url 'admin_staff_list' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+        
+        {% if form.errors %}
+        <div class="alert alert-danger mt-3">
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    </section>
+{% endblock %}

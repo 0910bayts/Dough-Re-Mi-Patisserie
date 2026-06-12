@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Delete Staff Account - Dough Re Mi Patisserie{% endblock %}
+
+{% block content %}
+    <section>
+    <div class="registration">
+        <h1>Delete Staff Account</h1>
+        
+        <div class="alert alert-warning">
+            <h4>Are you sure you want to delete "{{ user.email }}"?</h4>
+            <p>This action cannot be undone.</p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Delete</button>
+            <a href="{% url 'admin_staff_list' %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+    </section>
+{% endblock %}

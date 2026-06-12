@@ -47,6 +47,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'bakery.middleware.RequirePasswordMiddleware',
+    'bakery.middleware.RoleBasedRedirectMiddleware',
 ]
 
 ROOT_URLCONF = 'dough_re_mi.urls'
@@ -124,6 +125,10 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'bakery' / 'static',
 ]
+
+# Media files (User uploaded content)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

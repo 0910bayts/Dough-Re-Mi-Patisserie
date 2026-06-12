@@ -3,6 +3,8 @@ from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
+from bakery.models import UserProfile, Product, Order
+
 class SignUpForm(forms.ModelForm):
     first_name = forms.CharField(max_length=50, required=True, label="First Name")
     last_name = forms.CharField(max_length=50, required=True, label="Last Name")
@@ -54,3 +56,106 @@ class DeliveryForm(forms.Form):
     city = forms.CharField(max_length=55, required=True, label="City")
     postalCode = forms.IntegerField(required=True, label="Postal Code")
     paymentMethod = forms.ChoiceField(choices=PAYMENT_CHOICES, required=True, label="Payment Method")
+
+class StaffCreateForm(forms.ModelForm):
+    email = forms.EmailField(required=True, label="Email Address")
+    password = forms.CharField(widget=forms.PasswordInput(), required=True, label="Password")
+    
+    class Meta:
+        model = User
+        fields = ['email']
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise ValidationError("Email is already registered.")
+        return email
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data['password'])
+        user.username = self.cleaned_data['email']
+        if commit:
+            user.save()
+            # Create UserProfile with staff role
+            UserProfile.objects.create(
+                user=user,
+                role='staff',
+                is_active=True
+            )
+        return user
+
+class StaffEditForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=50, required=True, label="First Name")
+    last_name = forms.CharField(max_length=50, required=True, label="Last Name")
+    email = forms.EmailField(required=True, label="Email Address")
+    contactnumber = forms.CharField(max_length=11, required=True, label="Phone Number")
+    is_active = forms.BooleanField(required=False, label="Active")
+    
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and hasattr(self.instance, 'profile'):
+            self.fields['contactnumber'].initial = self.instance.profile.contactnumber
+            self.fields['is_active'].initial = self.instance.profile.is_active
+    
+    def clean_contactnumber(self):
+        contactnumber = self.cleaned_data.get('contactnumber')
+        if not re.match(r'^\d{11}$', contactnumber):
+            raise ValidationError("Phone number must be exactly 11 digits.")
+        # Check if phone number is already registered by another user
+        if UserProfile.objects.filter(contactnumber=contact_number).exclude(user=self.instance).exists():
+            raise ValidationError("Phone number is already registered.")
+        return contactnumber
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        # Check if email is already registered by another user
+        if User.objects.filter(email=email).exclude(id=self.instance.id).exists():
+            raise ValidationError("Email is already registered.")
+        return email
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            # Update UserProfile
+            profile = user.profile
+            profile.contactnumber = self.cleaned_data['contactnumber']
+            profile.is_active = self.cleaned_data['is_active']
+            profile.save()
+        return user
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = ['name', 'price', 'image', 'description', 'stock', 'is_available']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'stock': forms.NumberInput(attrs={'class': 'form-control'}),
+            'is_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if image:
+            # Check if it's an uploaded file (not a string from existing image)
+            if hasattr(image, 'size'):
+                # Check file size (3MB = 3 * 1024 * 1024 bytes)
+                if image.size > 3 * 1024 * 1024:
+                    raise ValidationError("Image file size must be no more than 3MB.")
+        return image
+
+class OrderStatusForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = ['status']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-control'}),
+        }

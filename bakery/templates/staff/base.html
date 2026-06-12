@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Staff Dashboard - Dough Re Mi Patisserie{% endblock %}
+
+{% block navbar %}
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'index' %}"><img src="{% static 'images/newlogo.png' %}" alt="Dough Re Mi Patisserie" style="height: 40px;"></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'staff_dashboard' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'staff_products' %}">Products</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'staff_orders' %}">Orders</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'logout' %}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4" style="min-height: calc(100vh - 200px);">
+        <div class="row">
+            <div class="col-md-12">
+                {% block staff_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block footer %}
+    <footer class="py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <p>© 2024, Dough Re Mi Patisserie Online Quiapo Manila</p>
+                    <p>Staff Dashboard</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+{% endblock %}

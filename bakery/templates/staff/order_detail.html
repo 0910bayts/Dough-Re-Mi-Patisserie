@@ -1,0 +1,53 @@
+{% extends 'staff/base.html' %}
+{% load static %}
+
+{% block staff_content %}
+    <h1 class="mb-4">Order #{{ order.id }}</h1>
+    
+    {% if messages %}
+        <div class="alert alert-success">
+            {% for message in messages %}
+                {{ message }}
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Customer Information</h5>
+                    <p><strong>Name:</strong> {{ order.user.get_full_name }}</p>
+                    <p><strong>Email:</strong> {{ order.user.email }}</p>
+                    <p><strong>Phone:</strong> {{ order.user.profile.contactnumber }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Order Information</h5>
+                    <p><strong>Item:</strong> {{ order.item_name }}</p>
+                    <p><strong>Price:</strong> ₱{{ order.item_price }}</p>
+                    <p><strong>Date:</strong> {{ order.ordered_at|date:"F d, Y H:i" }}</p>
+                    <p><strong>Session ID:</strong> {{ order.session_id }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Update Order Status</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                    {{ form.status }}
+                </div>
+                <button type="submit" class="btn btn-primary" style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">Update Status</button>
+                <a href="{% url 'staff_orders' %}" class="btn btn-secondary">Back to Orders</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}
