@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign In Via Google - Dough Re Mi Patisserie{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background-image: url("{% static 'images/LightBg.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        min-height: 100vh;
+    }
+    .registration {
+        background-color: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        max-width: 500px;
+        margin: 50px auto;
+        text-align: center;
+    }
+    .registration h1 {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .registration p {
+        color: #666;
+        margin-bottom: 30px;
+    }
+    .btn-primary {
+        background-color: rgb(121, 65, 28);
+        border-color: rgb(121, 65, 28);
+        padding: 10px;
+        width: 100%;
+        border-radius: 10px;
+        color: white;
+        font-size: 16px;
+    }
+    .btn-primary:hover {
+        background-color: rgb(101, 55, 23);
+        border-color: rgb(101, 55, 23);
+    }
+</style>
+{% endblock %}
+
+{% block navbar %}
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'index' %}"><img src="{% static 'images/newlogo.png' %}" alt="Dough Re Mi Patisserie" style="height: 40px;"></a>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <section>
+        <div class="registration">
+            <h1>Sign In Via Google</h1>
+            <p>You are about to sign in using a third-party account from Google.</p>
+            
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">Continue</button>
+            </form>
+        </div>
+    </section>
+{% endblock %}
+
+{% block footer %}
+    <footer class="py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'index' %}" class="text-white">Home</a></li>
+                        <li><a href="{% url 'menu' %}" class="text-white">Menu</a></li>
+                        <li><a href="{% url 'aboutus' %}" class="text-white">About us</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>Follow Us</h5>
+                    <a href="https://www.facebook.com/" class="text-white me-3"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://twitter.com/" class="text-white me-3"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.instagram.com/" class="text-white"><i class="fab fa-instagram"></i></a>
+                </div>
+                <div class="col-md-4">
+                    <p>© 2024, Dough Re Mi Patisserie Online Quiapo Manila</p>
+                    <p>Dough Re Mi Patisserie Online</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+{% endblock %}

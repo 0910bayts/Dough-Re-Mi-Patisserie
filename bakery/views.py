@@ -1,11 +1,12 @@
 import json
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.contrib.auth.forms import SetPasswordForm
 
 from bakery.models import Product, CartItem, Order, Receipt, UserProfile
 from bakery.forms import SignUpForm, DeliveryForm
@@ -223,3 +224,17 @@ def receipt_view(request):
         'orders': orders,
         'contact_number': contact_number
     })
+
+@login_required
+def set_password_view(request):
+    if request.method == 'POST':
+        form = SetPasswordForm(request.user, request.POST)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, form.user)
+            messages.success(request, "Password set successfully! You can now log in using your email and password.")
+            return redirect('index')
+    else:
+        form = SetPasswordForm(request.user)
+    
+    return render(request, 'set_password.html', {'form': form})

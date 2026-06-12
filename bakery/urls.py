@@ -11,6 +11,7 @@ urlpatterns = [
     path('menu.php', views.menu_view, name='menu'),
     path('delivery.php', views.delivery_view, name='delivery'),
     path('receipt.php', views.receipt_view, name='receipt'),
+    path('set-password.php', views.set_password_view, name='set_password'),
     
     # Cart AJAX APIs mapped to match legacy PHP requests
     path('add-to-cart.php', views.cart_add, name='cart_add'),
