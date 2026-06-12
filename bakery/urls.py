@@ -14,6 +14,8 @@ urlpatterns = [
     path('receipt.php', views.receipt_view, name='receipt'),
     path('set-password.php', views.set_password_view, name='set_password'),
     path('profile.php', views.profile_view, name='profile'),
+    path('change-password.php', views.change_password_view, name='change_password'),
+    path('change-email.php', views.change_email_view, name='change_email'),
     
     # Staff Dashboard Routes
     path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard'),

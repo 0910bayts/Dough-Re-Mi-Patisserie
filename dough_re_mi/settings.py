@@ -139,6 +139,28 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'index'
 
+# Session Expiry (Elevation of Privilege Mitigation)
+SESSION_COOKIE_AGE = 1800  # 30 minutes (in seconds)
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session expiry on every request (inactivity timeout)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Clear session when browser is closed
+
+# HTTPS Enforcement & Security Headers (Information Disclosure Mitigations)
+# Only enforce strict HTTPS redirect and secure cookies in production (non-DEBUG)
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True' if not DEBUG else False
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+# HTTP Strict Transport Security (HSTS) settings
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+else:
+    SECURE_HSTS_SECONDS = 0
+
+# General security headers (safe to enable everywhere)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
 # Django allauth configuration
 AUTHENTICATION_BACKENDS = [
     # Needed to login by username in Django admin, regardless of `allauth`

@@ -159,3 +159,32 @@ class OrderStatusForm(forms.ModelForm):
         widgets = {
             'status': forms.Select(attrs={'class': 'form-control'}),
         }
+
+
+class EmailChangeForm(forms.Form):
+    new_email = forms.EmailField(
+        required=True,
+        label="New Email Address",
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter your new email address'})
+    )
+    current_password = forms.CharField(
+        required=True,
+        label="Current Password",
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter your current password'})
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_new_email(self):
+        new_email = self.cleaned_data.get('new_email')
+        if User.objects.filter(email=new_email).exclude(id=self.user.id).exists():
+            raise ValidationError("This email address is already in use.")
+        return new_email
+
+    def clean_current_password(self):
+        current_password = self.cleaned_data.get('current_password')
+        if current_password and not self.user.check_password(current_password):
+            raise ValidationError("Incorrect current password.")
+        return current_password

@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.forms import SetPasswordForm, PasswordChangeForm
 from django.core.paginator import Paginator
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -17,7 +17,7 @@ from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 
 from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, MFACode
-from bakery.forms import SignUpForm, DeliveryForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm
+from bakery.forms import SignUpForm, DeliveryForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm, EmailChangeForm
 from bakery.decorators import staff_required, admin_required
 
 # ============================================================================
@@ -582,6 +582,38 @@ def admin_staff_delete(request, user_id):
         return redirect('admin_staff_list')
     
     return render(request, 'admin/staff_confirm_delete.html', {'user': user})
+
+@login_required
+def change_password_view(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Important to keep user logged in
+            messages.success(request, "Your password was successfully updated.")
+            return redirect('profile')
+        else:
+            messages.error(request, "Please correct the error below.")
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'change_password.html', {'form': form})
+
+@login_required
+def change_email_view(request):
+    if request.method == 'POST':
+        form = EmailChangeForm(request.user, request.POST)
+        if form.is_valid():
+            new_email = form.cleaned_data.get('new_email')
+            user = request.user
+            user.email = new_email
+            user.save()
+            messages.success(request, "Your email was successfully updated.")
+            return redirect('profile')
+        else:
+            messages.error(request, "Please correct the error below.")
+    else:
+        form = EmailChangeForm(request.user)
+    return render(request, 'change_email.html', {'form': form})
 
 def profile_view(request):
     profile = request.user.profile

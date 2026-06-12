@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Change Email - Dough Re Mi Patisserie{% endblock %}
+
+{% block content %}
+    <section>
+        <div class="registration">
+            <h1>Change Email Address</h1>
+            <p>Please enter your current password to update your email address.</p>
+
+            {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" name="change_email" id="submit"><h3>Change Email Address</h3></button>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{% url 'profile' %}" style="color: #ff6b6b; text-decoration: none;">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </section>
+{% endblock %}
