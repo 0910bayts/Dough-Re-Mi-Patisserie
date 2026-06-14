@@ -1,5 +1,6 @@
 {% extends 'staff/base.html' %}
 {% load static %}
+{% csrf_token %}
 
 {% block staff_content %}
     <h1 class="mb-4">Orders</h1>
@@ -12,48 +13,114 @@
         </div>
     {% endif %}
     
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="orderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'pending' %}active{% endif %}" 
+                    onclick="switchTab('pending')" 
+                    type="button" role="tab">Pending</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'processing' %}active{% endif %}" 
+                    onclick="switchTab('processing')" 
+                    type="button" role="tab">Processing</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'claimed' %}active{% endif %}" 
+                    onclick="switchTab('claimed')" 
+                    type="button" role="tab">Claimed</button>
+        </li>
+    </ul>
+    
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
                 <tr>
                     <th>Order #</th>
-                    <th>Customer</th>
+                    <th>Customer Name</th>
                     <th>Email</th>
+                    <th>Contact Number</th>
                     <th>Item</th>
                     <th>Price</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>Date & Time Ordered</th>
+                    <th>Payment Option</th>
+                    <th>Pickup Date</th>
+                    {% if active_tab == 'processing' %}
+                    <th>Date & Time of Process</th>
+                    {% endif %}
+                    {% if active_tab == 'claimed' %}
+                    <th>Date & Time Claimed</th>
+                    {% endif %}
+                    {% if active_tab == 'pending' or active_tab == 'processing' %}
+                    <th>Action</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for order in page_obj %}
                 <tr>
-                    <td>{{ order.id }}</td>
-                    <td>{{ order.user.get_full_name }}</td>
-                    <td>{{ order.user.email }}</td>
+                    <td>{{ order.reference_number|default:order.id }}</td>
+                    <td>{{ order.customer_name }}</td>
+                    <td>{{ order.customer_email }}</td>
+                    <td>{{ order.customer_contact }}</td>
                     <td>{{ order.item_name }}</td>
                     <td>₱{{ order.item_price }}</td>
-                    <td>{{ order.ordered_at|date:"M d, Y" }}</td>
+                    <td>{{ order.ordered_at|date:"M d, Y H:i" }}</td>
                     <td>
                         <span class="badge 
-                            {% if order.status == 'pending' %}bg-warning
-                            {% elif order.status == 'confirmed' %}bg-info
-                            {% elif order.status == 'preparing' %}bg-primary
-                            {% elif order.status == 'ready' %}bg-success
-                            {% elif order.status == 'completed' %}bg-secondary
-                            {% elif order.status == 'cancelled' %}bg-danger
+                            {% if order.payment_option_display == 'full' %}bg-success
+                            {% elif order.payment_option_display == 'partial' %}bg-warning
+                            {% else %}bg-secondary
                             {% endif %}">
-                            {{ order.get_status_display }}
+                            {{ order.get_payment_option_display|default:"N/A" }}
                         </span>
                     </td>
                     <td>
-                        <a href="{% url 'staff_order_detail' order.id %}" class="btn btn-sm btn-primary" style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">View Details</a>
+                        {% if order.pickup_date_display %}
+                            {{ order.pickup_date_display|date:"M d, Y" }}
+                        {% else %}
+                            N/A
+                        {% endif %}
                     </td>
+                    {% if active_tab == 'processing' %}
+                    <td>
+                        {% if order.processed_at %}
+                            {{ order.processed_at|date:"M d, Y H:i" }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    {% if active_tab == 'claimed' %}
+                    <td>
+                        {% if order.claimed_at %}
+                            {{ order.claimed_at|date:"M d, Y H:i" }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    {% if active_tab == 'pending' %}
+                    <td>
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="moveToProcessing({{ order.id }})"
+                                style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">
+                            Processing
+                        </button>
+                    </td>
+                    {% endif %}
+                    {% if active_tab == 'processing' %}
+                    <td>
+                        <button class="btn btn-sm btn-success" 
+                                onclick="moveToClaimed({{ order.id }})">
+                            Claimed
+                        </button>
+                    </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center">No orders found.</td>
+                    <td colspan="10" class="text-center">No orders found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -64,13 +131,84 @@
     <nav aria-label="Page navigation">
         <ul class="pagination">
             {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="?tab={{ active_tab }}&page={{ page_obj.previous_page_number }}">Previous</a></li>
             {% endif %}
             <li class="page-item active"><a class="page-link" href="#">{{ page_obj.number }}</a></li>
             {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="?tab={{ active_tab }}&page={{ page_obj.next_page_number }}">Next</a></li>
             {% endif %}
         </ul>
     </nav>
     {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function switchTab(tabName) {
+    window.location.href = `?tab=${tabName}`;
+}
+
+function moveToProcessing(orderId) {
+    const csrfToken = getCookie('csrftoken');
+    
+    fetch(`/staff/orders/${orderId}/move-to-processing/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to update order status: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update order status');
+    });
+}
+
+function moveToClaimed(orderId) {
+    const csrfToken = getCookie('csrftoken');
+    
+    fetch(`/staff/orders/${orderId}/move-to-claimed/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to update order status: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update order status');
+    });
+}
+</script>
 {% endblock %}

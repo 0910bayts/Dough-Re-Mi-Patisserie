@@ -3,7 +3,132 @@ import json
 import base64
 from django.conf import settings
 from django.utils import timezone
-from bakery.models import Payment, Receipt, Order, AuditLog
+from django.db import transaction
+from bakery.models import Payment, Receipt, Order, AuditLog, InventoryLog, Product
+
+
+@transaction.atomic
+def deduct_stock_for_orders(session_id, payment_id, user):
+    """
+    Atomically deduct stock for all orders in a session after successful payment.
+    
+    Args:
+        session_id (str): The session ID for the orders
+        payment_id (int): The payment ID for audit logging
+        user: The user who made the payment
+        
+    Returns:
+        dict: Result with success status and details
+    """
+    try:
+        # Get all orders for this session
+        orders = Order.objects.filter(session_id=session_id).select_for_update()
+        
+        if not orders:
+            return {'success': True, 'message': 'No orders found for stock deduction'}
+        
+        stock_deduction_results = []
+        insufficient_stock_items = []
+        
+        for order in orders:
+            # Find the product by name
+            try:
+                product = Product.objects.filter(name=order.item_name).select_for_update().first()
+                if not product:
+                    stock_deduction_results.append({
+                        'product': order.item_name,
+                        'status': 'product_not_found',
+                        'quantity': order.quantity
+                    })
+                    continue
+                
+                # Check if sufficient stock is available
+                if product.stock < order.quantity:
+                    insufficient_stock_items.append({
+                        'product': product.name,
+                        'requested': order.quantity,
+                        'available': product.stock
+                    })
+                    
+                    # Log insufficient stock
+                    AuditLog.objects.create(
+                        user=user,
+                        action='stock_insufficient',
+                        description=f"Insufficient stock for {product.name}: requested {order.quantity}, available {product.stock}",
+                        product_id=product.id,
+                        order_id=order.id
+                    )
+                    continue
+                
+                # Deduct stock
+                previous_stock = product.stock
+                new_stock = product.stock - order.quantity
+                product.stock = new_stock
+                product.save()
+                
+                # Log inventory change
+                InventoryLog.objects.create(
+                    product=product,
+                    change_type='deduction',
+                    quantity_change=-order.quantity,
+                    previous_stock=previous_stock,
+                    new_stock=new_stock,
+                    order_id=order.id,
+                    payment_id=payment_id,
+                    user=user,
+                    notes=f"Stock deducted for order {order.id} after successful payment"
+                )
+                
+                stock_deduction_results.append({
+                    'product': product.name,
+                    'status': 'success',
+                    'quantity_deducted': order.quantity,
+                    'previous_stock': previous_stock,
+                    'new_stock': new_stock
+                })
+                
+                # Log successful stock deduction
+                AuditLog.objects.create(
+                    user=user,
+                    action='stock_deducted',
+                    description=f"Stock deducted for {product.name}: {order.quantity} units (from {previous_stock} to {new_stock})",
+                    product_id=product.id,
+                    order_id=order.id
+                )
+                
+            except Product.DoesNotExist:
+                stock_deduction_results.append({
+                    'product': order.item_name,
+                    'status': 'product_not_found',
+                    'quantity': order.quantity
+                })
+        
+        if insufficient_stock_items:
+            return {
+                'success': False,
+                'error': 'Insufficient stock for some items',
+                'insufficient_items': insufficient_stock_items,
+                'deduction_results': stock_deduction_results
+            }
+        
+        return {
+            'success': True,
+            'message': f'Stock deducted for {len(stock_deduction_results)} items',
+            'deduction_results': stock_deduction_results
+        }
+        
+    except Exception as e:
+        # Log error
+        AuditLog.objects.create(
+            user=user,
+            action='stock_validation_failed',
+            description=f"Stock deduction failed: {str(e)}",
+            ip_address=None
+        )
+        return {
+            'success': False,
+            'error': f"Stock deduction failed: {str(e)}"
+        }
 
 
 def create_paymongo_checkout(amount, description, user):
@@ -220,6 +345,10 @@ def process_webhook_event(payload, signature):
             try:
                 payment = Payment.objects.filter(paymongo_payment_id=payment_intent_id).first()
                 if payment:
+                    # Check if payment is already processed to prevent duplicate webhook handling
+                    if payment.status == 'paid':
+                        return {'success': True, 'message': 'Payment already processed'}
+                    
                     payment.status = 'paid'
                     payment.save()
                     
@@ -233,6 +362,22 @@ def process_webhook_event(payload, signature):
                             reference_number=payment.receipt.reference_number,
                             status='confirmed'
                         )
+                        
+                        # Deduct stock for all ordered items
+                        stock_deduction_result = deduct_stock_for_orders(
+                            payment.receipt.session_id,
+                            payment.id,
+                            payment.user
+                        )
+                        
+                        if not stock_deduction_result['success']:
+                            # Log stock deduction failure but don't fail the payment
+                            AuditLog.objects.create(
+                                user=payment.user,
+                                action='stock_validation_failed',
+                                description=f"Stock deduction failed for payment {payment.id}: {stock_deduction_result.get('error', 'Unknown error')}",
+                                ip_address=None
+                            )
                     
                     # Log payment success
                     AuditLog.objects.create(

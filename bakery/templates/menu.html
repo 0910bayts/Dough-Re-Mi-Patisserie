@@ -80,6 +80,9 @@
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title">{{ product.name }}</h5>
                         <p class="card-text">PHP {{ product.price }}</p>
+                        {% if product.description %}
+                        <p class="card-text text-muted small">{{ product.description }}</p>
+                        {% endif %}
                         <div class="input-group mb-3 mx-auto" id="qty" style="max-width: 150px;">
                             <button class="input-group-text decrement-btn" onclick="decrement('qty_{{ product.id }}')">-</button>
                             <input type="text" class="form-control text-center product_quantity bg-white" id="qty_{{ product.id }}" value="1">

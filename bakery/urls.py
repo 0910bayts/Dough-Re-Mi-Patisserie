@@ -25,6 +25,9 @@ urlpatterns = [
     path('staff/products/<int:product_id>/delete/', views.staff_product_delete, name='staff_product_delete'),
     path('staff/orders/', views.staff_orders, name='staff_orders'),
     path('staff/orders/<int:order_id>/', views.staff_order_detail, name='staff_order_detail'),
+    path('staff/orders/<int:order_id>/move-to-processing/', views.move_to_processing, name='move_to_processing'),
+    path('staff/orders/<int:order_id>/move-to-claimed/', views.move_to_claimed, name='move_to_claimed'),
+    path('staff/orders/<int:order_id>/update-status/', views.update_order_status, name='update_order_status'),
     
     # Admin Staff Management Routes
     path('admin/staff/', views.admin_staff_list, name='admin_staff_list'),

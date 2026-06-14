@@ -2,7 +2,7 @@ import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -18,7 +18,7 @@ import json
 
 from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, Payment, generate_order_reference_number
 from bakery.forms import SignUpForm, DeliveryForm, PickupForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm
-from bakery.paymongo_utils import create_paymongo_checkout, verify_paymongo_payment, process_webhook_event
+from bakery.paymongo_utils import create_paymongo_checkout, verify_paymongo_payment, deduct_stock_for_orders, process_webhook_event
 from bakery.decorators import staff_required, admin_required
 
 def send_order_confirmation_email(receipt, orders):
@@ -565,6 +565,18 @@ def payment_success_view(request):
                 status='confirmed'
             )
             
+            # Deduct stock for all ordered items
+            stock_deduction_result = deduct_stock_for_orders(session_id, payment.id, request.user)
+            
+            if not stock_deduction_result['success']:
+                # Log stock deduction failure but don't fail the order
+                AuditLog.objects.create(
+                    user=request.user,
+                    action='stock_validation_failed',
+                    description=f"Stock deduction failed for order {reference_number}: {stock_deduction_result.get('error', 'Unknown error')}",
+                    ip_address=request.META.get('REMOTE_ADDR')
+                )
+            
             # Log payment success
             AuditLog.objects.create(
                 user=request.user,
@@ -786,12 +798,153 @@ def staff_product_delete(request, product_id):
 
 @staff_required
 def staff_orders(request):
-    orders = Order.objects.all().select_related('user').order_by('-ordered_at')
+    from datetime import timedelta
+    
+    # Get the active tab from query parameter (default: pending)
+    active_tab = request.GET.get('tab', 'pending')
+    
+    # Filter orders based on active tab
+    if active_tab == 'pending':
+        orders = Order.objects.filter(status='pending').select_related('user').order_by('-ordered_at')
+    elif active_tab == 'processing':
+        orders = Order.objects.filter(status='processing').select_related('user').order_by('-ordered_at')
+    elif active_tab == 'claimed':
+        orders = Order.objects.filter(status='claimed').select_related('user').order_by('-ordered_at')
+    else:
+        orders = Order.objects.all().select_related('user').order_by('-ordered_at')
+    
+    # Get receipt data for each order
+    for order in orders:
+        # Try to get receipt for this order's session
+        receipt = Receipt.objects.filter(session_id=order.session_id).first()
+        
+        if receipt:
+            order.customer_name = receipt.full_name or order.user.get_full_name()
+            order.customer_email = receipt.user.email
+            order.customer_contact = receipt.contact_number if receipt.contact_number else (order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A')
+            order.payment_option_display = receipt.payment_option if receipt.payment_option else order.payment_option
+        else:
+            # Fallback to order data if no receipt exists
+            order.customer_name = order.user.get_full_name()
+            order.customer_email = order.user.email
+            order.customer_contact = order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A'
+            order.payment_option_display = order.payment_option if order.payment_option else 'N/A'
+        
+        # Calculate pickup date (3 days after order date)
+        if order.pickup_availability_date:
+            order.pickup_date_display = order.pickup_availability_date
+        elif order.ordered_at:
+            order.pickup_date_display = order.ordered_at + timedelta(days=3)
+        else:
+            order.pickup_date_display = None
+    
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'staff/orders.html', {'page_obj': page_obj})
+    return render(request, 'staff/orders.html', {
+        'page_obj': page_obj,
+        'active_tab': active_tab
+    })
+
+@staff_required
+def move_to_processing(request, order_id):
+    """Move order from Pending to Processing"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        order = get_object_or_404(Order, id=order_id)
+        
+        # Validate status transition
+        if order.status != 'pending':
+            return JsonResponse({'success': False, 'error': 'Order must be in Pending status to move to Processing'})
+        
+        old_status = order.status
+        order.status = 'processing'
+        order.processed_at = timezone.now()
+        order.save()
+        
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='order_status_update',
+            description=f"Moved order {order.id} from {old_status} to Processing",
+            order_id=order.id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Order moved to Processing successfully'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_required
+def move_to_claimed(request, order_id):
+    """Move order from Processing to Claimed"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        order = get_object_or_404(Order, id=order_id)
+        
+        # Validate status transition
+        if order.status != 'processing':
+            return JsonResponse({'success': False, 'error': 'Order must be in Processing status to move to Claimed'})
+        
+        old_status = order.status
+        order.status = 'claimed'
+        order.claimed_at = timezone.now()
+        order.save()
+        
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='order_status_update',
+            description=f"Moved order {order.id} from {old_status} to Claimed",
+            order_id=order.id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Order moved to Claimed successfully'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_required
+@csrf_exempt
+def update_order_status(request, order_id):
+    """Update order status via AJAX"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        
+        if not new_status:
+            return JsonResponse({'success': False, 'error': 'Status is required'})
+        
+        order = get_object_or_404(Order, id=order_id)
+        old_status = order.status
+        order.status = new_status
+        order.save()
+        
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='order_status_update',
+            description=f"Updated order {order.id} status from {old_status} to {new_status}",
+            order_id=order.id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Order status updated successfully'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 @staff_required
 def staff_order_detail(request, order_id):

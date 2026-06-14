@@ -39,6 +39,8 @@ class CartItem(models.Model):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('claimed', 'Claimed'),
         ('confirmed', 'Confirmed'),
         ('preparing', 'Preparing'),
         ('ready', 'Ready for Pickup'),
@@ -63,6 +65,8 @@ class Order(models.Model):
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     remaining_balance = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     pickup_availability_date = models.DateField(null=True, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True, help_text="Date and time when order was moved to Processing")
+    claimed_at = models.DateTimeField(null=True, blank=True, help_text="Date and time when order was claimed")
 
     def __str__(self):
         return f"Order {self.id} for {self.user.username} ({self.status})"
@@ -161,6 +165,8 @@ class AuditLog(models.Model):
         ('payment_failed', 'Payment Failed'),
         ('payment_verification_failed', 'Payment Verification Failed'),
         ('pickup_completed', 'Pickup Completed'),
+        ('stock_deducted', 'Stock Deducted'),
+        ('stock_insufficient', 'Stock Insufficient'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
@@ -179,3 +185,29 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user.username if self.user else 'System'} - {self.action} at {self.timestamp}"
+
+class InventoryLog(models.Model):
+    """Track inventory changes for audit purposes"""
+    CHANGE_TYPE_CHOICES = [
+        ('deduction', 'Stock Deduction'),
+        ('restock', 'Stock Restock'),
+        ('adjustment', 'Stock Adjustment'),
+        ('initial', 'Initial Stock'),
+    ]
+    
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventory_logs')
+    change_type = models.CharField(max_length=20, choices=CHANGE_TYPE_CHOICES)
+    quantity_change = models.IntegerField()  # Positive for addition, negative for deduction
+    previous_stock = models.IntegerField()
+    new_stock = models.IntegerField()
+    order_id = models.IntegerField(null=True, blank=True)
+    payment_id = models.IntegerField(null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='inventory_changes')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.product.name}: {self.change_type} ({self.quantity_change}) at {self.timestamp}"
