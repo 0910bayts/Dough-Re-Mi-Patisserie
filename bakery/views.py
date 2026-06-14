@@ -10,13 +10,18 @@ logger = logging.getLogger('security')
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+<<<<<<< HEAD
 from django.http import JsonResponse, HttpResponse
+=======
+from django.http import JsonResponse, HttpResponseRedirect
+>>>>>>> origin/chelle_django_ver
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm, PasswordChangeForm
 from django.core.paginator import Paginator
+<<<<<<< HEAD
 from django.core.mail import send_mail
 from django.utils import timezone
 from datetime import timedelta
@@ -25,6 +30,19 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, MFACode
 from bakery.forms import SignUpForm, DeliveryForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm, EmailChangeForm
+=======
+from django.utils import timezone
+from django.db import models
+from datetime import timedelta
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, Payment, generate_order_reference_number
+from bakery.forms import SignUpForm, DeliveryForm, PickupForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm
+from bakery.paymongo_utils import create_paymongo_checkout, verify_paymongo_payment, deduct_stock_for_orders, process_webhook_event
+>>>>>>> origin/chelle_django_ver
 from bakery.decorators import staff_required, admin_required
 from bakery.signals import get_client_ip
 from bakery.utils import generate_captcha_svg
@@ -90,6 +108,32 @@ def captcha_image_view(request):
     request.session['captcha_code'] = code
     svg_content = generate_captcha_svg(code)
     return HttpResponse(svg_content, content_type="image/svg+xml")
+
+def send_order_confirmation_email(receipt, orders):
+    """Send order confirmation email to customer"""
+    try:
+        subject = f"Order Confirmation - {receipt.reference_number}"
+        
+        # Render HTML email template
+        html_message = render_to_string('emails/order_confirmation.html', {
+            'receipt': receipt,
+            'orders': orders
+        })
+        
+        # Send email
+        send_mail(
+            subject=subject,
+            message=f"Your order {receipt.reference_number} has been confirmed. Pickup availability date: {receipt.pickup_availability_date}",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[receipt.user.email],
+            html_message=html_message,
+            fail_silently=False
+        )
+        
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False
 
 def index_view(request):
     featured_products = Product.objects.all()[:3]
@@ -286,6 +330,13 @@ def logout_view(request):
 
 @ensure_csrf_cookie
 def menu_view(request):
+    # Check for payment status from PayMongo redirect
+    payment_status = request.GET.get('payment')
+    if payment_status == 'success':
+        messages.success(request, 'Payment successful! Please check your email for confirmation.')
+    elif payment_status == 'failed':
+        messages.error(request, 'Payment failed. Please try again.')
+    
     products = Product.objects.filter(is_available=True)
     paginator = Paginator(products, 12)
     page_number = request.GET.get('page', 1)
@@ -317,6 +368,7 @@ def cart_add(request):
         data = json.loads(request.body)
         name = data.get('name')
         quantity = int(data.get('quantity', 1))
+<<<<<<< HEAD
         if quantity <= 0:
             return JsonResponse({'message': 'Quantity must be greater than zero'}, status=400)
         product = get_object_or_404(Product, name=name)
@@ -327,9 +379,82 @@ def cart_add(request):
         else:
             cart_item.quantity += quantity
         cart_item.save()
+=======
+        product = get_object_or_404(Product, name=name)
+        
+        # Validation constants
+        MAX_PER_PRODUCT = 5
+        MAX_CART_CAPACITY = 15
+        
+        # Stock availability validation
+        if not product.is_available or product.stock <= 0:
+            AuditLog.objects.create(
+                user=request.user,
+                action='stock_validation_failed',
+                description=f"Attempted to add out-of-stock product: {product.name}",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'message': 'Product is out of stock'}, status=400)
+        
+        # Check if cart item already exists
+        cart_item = CartItem.objects.filter(user=request.user, product=product).first()
+        created = cart_item is None
+        
+        # Calculate new quantity
+        new_quantity = cart_item.quantity + quantity if not created else quantity
+        
+        # Per-product purchase limit validation
+        if new_quantity > MAX_PER_PRODUCT:
+            AuditLog.objects.create(
+                user=request.user,
+                action='per_product_limit_failed',
+                description=f"Attempted to add {new_quantity} units of {product.name} (max {MAX_PER_PRODUCT})",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'message': f'Maximum {MAX_PER_PRODUCT} units per product allowed'}, status=400)
+        
+        # Stock availability validation for requested quantity
+        if new_quantity > product.stock:
+            AuditLog.objects.create(
+                user=request.user,
+                action='stock_validation_failed',
+                description=f"Requested {new_quantity} units of {product.name} exceeds available stock ({product.stock})",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'message': 'Requested quantity exceeds available stock'}, status=400)
+        
+        # Cart capacity limit validation
+        current_cart_total = CartItem.objects.filter(user=request.user).aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
+        if not created:
+            current_cart_total -= cart_item.quantity  # Subtract current item quantity before adding new quantity
+        
+        if current_cart_total + quantity > MAX_CART_CAPACITY:
+            AuditLog.objects.create(
+                user=request.user,
+                action='cart_capacity_failed',
+                description=f"Attempted to add {quantity} items (cart total would be {current_cart_total + quantity}, max {MAX_CART_CAPACITY})",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'message': f'Cart capacity exceeded. Maximum {MAX_CART_CAPACITY} items allowed'}, status=400)
+        
+        # Create or update cart item (only after all validations pass)
+        if created:
+            cart_item = CartItem.objects.create(user=request.user, product=product, quantity=quantity)
+        else:
+            cart_item.quantity = new_quantity
+            cart_item.save()
+>>>>>>> origin/chelle_django_ver
             
         return JsonResponse({'message': 'Item added to cart'})
     except Exception as e:
+        AuditLog.objects.create(
+            user=request.user,
+            action='cart_add_error',
+            description=f"Error adding item to cart: {str(e)}",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
         return JsonResponse({'message': f'Error adding item to cart: {str(e)}'}, status=400)
 
 @login_required
@@ -338,17 +463,26 @@ def cart_remove(request):
     try:
         data = json.loads(request.body)
         index = data.get('index')
+        action = data.get('action', 'decrement')
         
         cart_items = list(CartItem.objects.filter(user=request.user).order_by('id'))
         
         if 0 <= index < len(cart_items):
             item_to_remove = cart_items[index]
-            if item_to_remove.quantity > 1:
-                item_to_remove.quantity -= 1
-                item_to_remove.save()
-            else:
+            
+            if action == 'remove':
+                # Actually remove the item from cart
                 item_to_remove.delete()
-            return JsonResponse({'message': 'Item removed from cart'})
+                return JsonResponse({'message': 'Item removed from cart'})
+            else:
+                # Decrement quantity (old behavior)
+                if item_to_remove.quantity > 1:
+                    item_to_remove.quantity -= 1
+                    item_to_remove.save()
+                    return JsonResponse({'message': 'Item quantity reduced'})
+                else:
+                    item_to_remove.delete()
+                    return JsonResponse({'message': 'Item removed from cart'})
         else:
             return JsonResponse({'message': 'Item not found in cart'}, status=404)
     except Exception as e:
@@ -356,10 +490,140 @@ def cart_remove(request):
 
 @login_required
 @require_POST
+def cart_update_quantity(request):
+    try:
+        data = json.loads(request.body)
+        index = data.get('index')
+        action = data.get('action')
+        
+        # Validation constants
+        MAX_PER_PRODUCT = 5
+        MAX_CART_CAPACITY = 15
+        
+        cart_items = list(CartItem.objects.filter(user=request.user).order_by('id'))
+        
+        if 0 <= index < len(cart_items):
+            cart_item = cart_items[index]
+            
+            if action == 'increment':
+                # Check per-product limit
+                if cart_item.quantity >= MAX_PER_PRODUCT:
+                    return JsonResponse({'success': False, 'message': f'Maximum {MAX_PER_PRODUCT} units per product allowed'})
+                
+                # Check stock availability
+                if cart_item.quantity >= cart_item.product.stock:
+                    return JsonResponse({'success': False, 'message': 'Requested quantity exceeds available stock'})
+                
+                # Check cart capacity
+                current_cart_total = CartItem.objects.filter(user=request.user).aggregate(
+                    total=models.Sum('quantity')
+                )['total'] or 0
+                if current_cart_total >= MAX_CART_CAPACITY:
+                    return JsonResponse({'success': False, 'message': f'Cart capacity exceeded. Maximum {MAX_CART_CAPACITY} items allowed'})
+                
+                # Increment quantity
+                cart_item.quantity += 1
+                cart_item.save()
+                return JsonResponse({'success': True, 'message': 'Item quantity increased'})
+                
+            elif action == 'decrement':
+                if cart_item.quantity > 1:
+                    cart_item.quantity -= 1
+                    cart_item.save()
+                    return JsonResponse({'success': True, 'message': 'Item quantity reduced'})
+                else:
+                    return JsonResponse({'success': False, 'message': 'Cannot reduce quantity below 1. Use X to remove item.'})
+            else:
+                return JsonResponse({'success': False, 'message': 'Invalid action'}, status=400)
+        else:
+            return JsonResponse({'success': False, 'message': 'Item not found in cart'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error updating item quantity: {str(e)}'}, status=400)
+
+@login_required
+@require_POST
 def checkout_view(request):
     cart_items = CartItem.objects.filter(user=request.user)
     if not cart_items.exists():
         return JsonResponse({'success': False, 'message': 'You need to add an item first!'})
+    
+    # Validation constants
+    MAX_PER_PRODUCT = 5
+    MAX_TOTAL_QUANTITY = 15
+    ORDER_COOLDOWN_MINUTES = 5
+    MAX_DAILY_ORDERS = 3
+    
+    # Total quantity validation
+    total_quantity = sum(item.quantity for item in cart_items)
+    if total_quantity > MAX_TOTAL_QUANTITY:
+        AuditLog.objects.create(
+            user=request.user,
+            action='total_quantity_limit_failed',
+            description=f"Checkout failed: Total quantity {total_quantity} exceeds maximum {MAX_TOTAL_QUANTITY}",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        return JsonResponse({'success': False, 'message': f'Total quantity cannot exceed {MAX_TOTAL_QUANTITY} items'}, status=400)
+    
+    # Order cooldown validation (only for successfully paid orders)
+    last_paid_order = Order.objects.filter(
+        user=request.user,
+        status__in=['processing', 'claimed']  # Successfully paid orders
+    ).order_by('-ordered_at').first()
+    if last_paid_order:
+        time_since_last_order = timezone.now() - last_paid_order.ordered_at
+        if time_since_last_order < timedelta(minutes=ORDER_COOLDOWN_MINUTES):
+            remaining_minutes = ORDER_COOLDOWN_MINUTES - (time_since_last_order.seconds // 60)
+            AuditLog.objects.create(
+                user=request.user,
+                action='order_cooldown_failed',
+                description=f"Attempted checkout during cooldown period. Wait {remaining_minutes} more minutes.",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'success': False, 'message': f'Please wait {remaining_minutes} minutes before placing another order'}, status=429)
+    
+    # Daily order limit validation
+    today = timezone.now().date()
+    daily_orders = Order.objects.filter(user=request.user, ordered_at__date=today).count()
+    if daily_orders >= MAX_DAILY_ORDERS:
+        AuditLog.objects.create(
+            user=request.user,
+            action='daily_order_limit_failed',
+            description=f"Attempted checkout with {daily_orders} orders today (max {MAX_DAILY_ORDERS})",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        return JsonResponse({'success': False, 'message': f'Daily order limit of {MAX_DAILY_ORDERS} orders reached'}, status=429)
+    
+    # Stock and per-product validation
+    for item in cart_items:
+        # Stock availability validation
+        if not item.product.is_available or item.product.stock <= 0:
+            AuditLog.objects.create(
+                user=request.user,
+                action='stock_validation_failed',
+                description=f"Checkout failed: {item.product.name} is out of stock",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'success': False, 'message': f'{item.product.name} is out of stock'}, status=400)
+        
+        # Stock quantity validation
+        if item.quantity > item.product.stock:
+            AuditLog.objects.create(
+                user=request.user,
+                action='stock_validation_failed',
+                description=f"Checkout failed: Requested {item.quantity} units of {item.product.name} exceeds available stock ({item.product.stock})",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'success': False, 'message': f'Insufficient stock for {item.product.name}'}, status=400)
+        
+        # Per-product purchase limit validation
+        if item.quantity > MAX_PER_PRODUCT:
+            AuditLog.objects.create(
+                user=request.user,
+                action='per_product_limit_failed',
+                description=f"Checkout failed: {item.quantity} units of {item.product.name} exceeds maximum {MAX_PER_PRODUCT}",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return JsonResponse({'success': False, 'message': f'Exceeds maximum {MAX_PER_PRODUCT} units for {item.product.name}'}, status=400)
         
     session_id = request.session.session_key
     if not session_id:
@@ -371,7 +635,13 @@ def checkout_view(request):
     total_price = Decimal('0.00')
     for item in cart_items:
         subtotal = item.product.price * item.quantity
-        total_price += subtotal
+        total_price += float(subtotal)
+        
+        # Update stock
+        item.product.stock -= item.quantity
+        if item.product.stock <= 0:
+            item.product.is_available = False
+        item.product.save()
         
         for _ in range(item.quantity):
             Order.objects.create(
@@ -387,36 +657,234 @@ def checkout_view(request):
     return JsonResponse({'success': True})
 
 @login_required
-def delivery_view(request):
+def pickup_view(request):
     session_id = request.session.get('checkout_session_id')
     total_price = request.session.get('total_price', '0.00')
     
     if not session_id or not Order.objects.filter(session_id=session_id).exists():
         messages.error(request, "No active order to bill.")
         return redirect('menu')
+    
+    orders = Order.objects.filter(session_id=session_id, user=request.user)
         
     if request.method == 'POST':
-        form = DeliveryForm(request.POST)
+        form = PickupForm(request.POST, user=request.user)
         if form.is_valid():
-            Receipt.objects.create(
-                user=request.user,
-                session_id=session_id,
-                total_price=float(total_price),
-                housenumber=str(form.cleaned_data['houseNumber']),
-                streetname=form.cleaned_data['street'],
-                barangay=form.cleaned_data['barangay'],
-                postalcode=str(form.cleaned_data['postalCode']),
-                city=form.cleaned_data['city']
+            # Calculate payment amounts based on payment option
+            payment_option = form.cleaned_data['payment_option']
+            total_amount = float(total_price)
+            
+            if payment_option == 'full':
+                amount_paid = total_amount
+                remaining_balance = 0
+            else:  # partial
+                amount_paid = total_amount * 0.5
+                remaining_balance = total_amount - amount_paid
+            
+            # Calculate pickup availability date (3 days from now)
+            pickup_availability_date = timezone.now().date() + timedelta(days=3)
+            
+            # Store checkout information in session for payment processing
+            request.session['checkout_info'] = {
+                'full_name': form.cleaned_data['full_name'],
+                'contact_number': form.cleaned_data['contact_number'],
+                'payment_method': form.cleaned_data['payment_method'],
+                'payment_option': payment_option,
+                'total_amount': total_amount,
+                'amount_paid': amount_paid,
+                'remaining_balance': remaining_balance,
+                'pickup_availability_date': pickup_availability_date.strftime('%Y-%m-%d')
+            }
+            
+            # Create PayMongo checkout session
+            payment_result = create_paymongo_checkout(
+                amount=amount_paid,
+                description=f"Order Payment - {payment_option.title()} - {request.user.username}",
+                user=request.user
             )
-            return redirect('receipt')
+            
+            if payment_result['success']:
+                # Store payment ID in session
+                request.session['payment_id'] = payment_result['payment_id']
+                request.session['checkout_id'] = payment_result['checkout_id']
+                
+                # Redirect to PayMongo checkout
+                return redirect(payment_result['checkout_url'])
+            else:
+                messages.error(request, f"Payment initialization failed: {payment_result['error']}")
+                return render(request, 'pickup.html', {
+                    'form': form,
+                    'total_price': total_price,
+                    'orders': orders
+                })
         else:
             messages.error(request, "Invalid form data. Please verify all inputs.")
     else:
-        form = DeliveryForm()
+        form = PickupForm(user=request.user)
         
-    return render(request, 'delivery.html', {
+    return render(request, 'pickup.html', {
         'form': form,
-        'total_price': total_price
+        'total_price': total_price,
+        'orders': orders
+    })
+
+@login_required
+def payment_success_view(request):
+    """Handle PayMongo payment success callback"""
+    checkout_id = request.GET.get('checkout_id')
+    payment_id = request.session.get('payment_id')
+    checkout_info = request.session.get('checkout_info')
+    session_id = request.session.get('checkout_session_id')
+    
+    if not checkout_id or not payment_id or not checkout_info or not session_id:
+        messages.error(request, "Invalid payment session. Please try again.")
+        return redirect('menu')
+    
+    # Verify payment with PayMongo
+    verification_result = verify_paymongo_payment(checkout_id)
+    
+    if verification_result['success'] and verification_result['status'] == 'paid':
+        try:
+            # Update payment record
+            payment = Payment.objects.get(id=payment_id)
+            payment.status = 'paid'
+            payment.paymongo_payment_id = verification_result.get('payment_intent_id')
+            payment.payment_method = verification_result.get('payment_method')
+            payment.raw_response = verification_result.get('raw_response')
+            payment.save()
+            
+            # Generate order reference number
+            reference_number = generate_order_reference_number()
+            
+            # Create receipt with payment information
+            receipt = Receipt.objects.create(
+                user=request.user,
+                session_id=session_id,
+                total_price=checkout_info['total_amount'],
+                full_name=checkout_info['full_name'],
+                contact_number=checkout_info['contact_number'],
+                reference_number=reference_number,
+                payment_option=checkout_info['payment_option'],
+                total_amount=checkout_info['total_amount'],
+                amount_paid=checkout_info['amount_paid'],
+                remaining_balance=checkout_info['remaining_balance'],
+                pickup_availability_date=timezone.datetime.strptime(checkout_info['pickup_availability_date'], '%Y-%m-%d').date()
+            )
+            
+            # Link payment to receipt
+            payment.receipt = receipt
+            payment.save()
+            
+            # Update orders with payment information and reference number
+            orders = Order.objects.filter(session_id=session_id, user=request.user)
+            orders.update(
+                payment_option=checkout_info['payment_option'],
+                total_amount=checkout_info['total_amount'],
+                amount_paid=checkout_info['amount_paid'],
+                remaining_balance=checkout_info['remaining_balance'],
+                pickup_availability_date=timezone.datetime.strptime(checkout_info['pickup_availability_date'], '%Y-%m-%d').date(),
+                reference_number=reference_number,
+                status='confirmed'
+            )
+            
+            # Deduct stock for all ordered items
+            stock_deduction_result = deduct_stock_for_orders(session_id, payment.id, request.user)
+            
+            if not stock_deduction_result['success']:
+                # Log stock deduction failure but don't fail the order
+                AuditLog.objects.create(
+                    user=request.user,
+                    action='stock_validation_failed',
+                    description=f"Stock deduction failed for order {reference_number}: {stock_deduction_result.get('error', 'Unknown error')}",
+                    ip_address=request.META.get('REMOTE_ADDR')
+                )
+            
+            # Log payment success
+            AuditLog.objects.create(
+                user=request.user,
+                action='payment_success',
+                description=f"Payment successful for order {reference_number}, amount: ₱{checkout_info['amount_paid']}",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            
+            # Send confirmation email
+            send_order_confirmation_email(receipt, orders)
+            
+            # Clear session data
+            request.session.pop('payment_id', None)
+            request.session.pop('checkout_id', None)
+            request.session.pop('checkout_info', None)
+            
+            return redirect('order_success')
+            
+        except Exception as e:
+            messages.error(request, f"Error processing order: {str(e)}")
+            AuditLog.objects.create(
+                user=request.user,
+                action='payment_verification_failed',
+                description=f"Error processing order after payment: {str(e)}",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            return redirect('menu')
+    else:
+        # Payment failed or verification failed
+        messages.error(request, f"Payment verification failed: {verification_result.get('error', 'Unknown error')}")
+        
+        # Update payment record to failed
+        try:
+            payment = Payment.objects.get(id=payment_id)
+            payment.status = 'failed'
+            payment.save()
+            
+            AuditLog.objects.create(
+                user=request.user,
+                action='payment_failed',
+                description=f"Payment verification failed: {verification_result.get('error')}",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+        except Payment.DoesNotExist:
+            pass
+        
+        return redirect('menu')
+
+@csrf_exempt
+def paymongo_webhook_view(request):
+    """Handle PayMongo webhook events for payment status updates"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        payload = json.loads(request.body)
+        signature = request.headers.get('X-Paymongo-Signature', '')
+        
+        # Process the webhook event
+        result = process_webhook_event(payload, signature)
+        
+        if result['success']:
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'error': result['error']}, status=400)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def order_success_view(request):
+    """Display order success page after successful payment"""
+    # Get the most recent receipt for the user
+    receipt = Receipt.objects.filter(user=request.user).order_by('-id').first()
+    
+    if not receipt:
+        messages.error(request, "No order found.")
+        return redirect('menu')
+    
+    orders = Order.objects.filter(session_id=receipt.session_id, user=request.user)
+    
+    return render(request, 'order_success.html', {
+        'receipt': receipt,
+        'orders': orders
     })
 
 @login_required
@@ -552,12 +1020,153 @@ def staff_product_delete(request, product_id):
 
 @staff_required
 def staff_orders(request):
-    orders = Order.objects.all().select_related('user').order_by('-ordered_at')
+    from datetime import timedelta
+    
+    # Get the active tab from query parameter (default: pending)
+    active_tab = request.GET.get('tab', 'pending')
+    
+    # Filter orders based on active tab
+    if active_tab == 'pending':
+        orders = Order.objects.filter(status='pending').select_related('user').order_by('-ordered_at')
+    elif active_tab == 'processing':
+        orders = Order.objects.filter(status='processing').select_related('user').order_by('-ordered_at')
+    elif active_tab == 'claimed':
+        orders = Order.objects.filter(status='claimed').select_related('user').order_by('-ordered_at')
+    else:
+        orders = Order.objects.all().select_related('user').order_by('-ordered_at')
+    
+    # Get receipt data for each order
+    for order in orders:
+        # Try to get receipt for this order's session
+        receipt = Receipt.objects.filter(session_id=order.session_id).first()
+        
+        if receipt:
+            order.customer_name = receipt.full_name or order.user.get_full_name()
+            order.customer_email = receipt.user.email
+            order.customer_contact = receipt.contact_number if receipt.contact_number else (order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A')
+            order.payment_option_display = receipt.payment_option if receipt.payment_option else order.payment_option
+        else:
+            # Fallback to order data if no receipt exists
+            order.customer_name = order.user.get_full_name()
+            order.customer_email = order.user.email
+            order.customer_contact = order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A'
+            order.payment_option_display = order.payment_option if order.payment_option else 'N/A'
+        
+        # Calculate pickup date (3 days after order date)
+        if order.pickup_availability_date:
+            order.pickup_date_display = order.pickup_availability_date
+        elif order.ordered_at:
+            order.pickup_date_display = order.ordered_at + timedelta(days=3)
+        else:
+            order.pickup_date_display = None
+    
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'staff/orders.html', {'page_obj': page_obj})
+    return render(request, 'staff/orders.html', {
+        'page_obj': page_obj,
+        'active_tab': active_tab
+    })
+
+@staff_required
+def move_to_processing(request, order_id):
+    """Move order from Pending to Processing"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        order = get_object_or_404(Order, id=order_id)
+        
+        # Validate status transition
+        if order.status != 'pending':
+            return JsonResponse({'success': False, 'error': 'Order must be in Pending status to move to Processing'})
+        
+        old_status = order.status
+        order.status = 'processing'
+        order.processed_at = timezone.now()
+        order.save()
+        
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='order_status_update',
+            description=f"Moved order {order.id} from {old_status} to Processing",
+            order_id=order.id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Order moved to Processing successfully'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_required
+def move_to_claimed(request, order_id):
+    """Move order from Processing to Claimed"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        order = get_object_or_404(Order, id=order_id)
+        
+        # Validate status transition
+        if order.status != 'processing':
+            return JsonResponse({'success': False, 'error': 'Order must be in Processing status to move to Claimed'})
+        
+        old_status = order.status
+        order.status = 'claimed'
+        order.claimed_at = timezone.now()
+        order.save()
+        
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='order_status_update',
+            description=f"Moved order {order.id} from {old_status} to Claimed",
+            order_id=order.id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Order moved to Claimed successfully'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@staff_required
+@csrf_exempt
+def update_order_status(request, order_id):
+    """Update order status via AJAX"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        
+        if not new_status:
+            return JsonResponse({'success': False, 'error': 'Status is required'})
+        
+        order = get_object_or_404(Order, id=order_id)
+        old_status = order.status
+        order.status = new_status
+        order.save()
+        
+        # Log audit
+        AuditLog.objects.create(
+            user=request.user,
+            action='order_status_update',
+            description=f"Updated order {order.id} status from {old_status} to {new_status}",
+            order_id=order.id,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Order status updated successfully'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 @staff_required
 def staff_order_detail(request, order_id):
