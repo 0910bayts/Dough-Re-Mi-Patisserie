@@ -182,7 +182,7 @@
                 <h3>Order Summary</h3>
                 {% for order in orders %}
                     <div class="order-item">
-                        <span>{{ order.item_name }} x {{ orders|length }}</span>
+                        <span>{{ order.item_name }} x {{ order.quantity|default:1 }}</span>
                         <span>₱{{ order.item_price }}</span>
                     </div>
                 {% endfor %}
@@ -190,10 +190,6 @@
                     <span>Total Packages: {{ orders|length }}</span>
                     <span>Grand Total: ₱{{ total_price }}</span>
                 </div>
-            </div>
-
-            <div class="total-container">
-                <p id="cartTotal">GRAND TOTAL: ₱{{ total_price }}</p>
             </div>
 
             <form id="checkout" action="{% url 'pickup' %}" method="POST">

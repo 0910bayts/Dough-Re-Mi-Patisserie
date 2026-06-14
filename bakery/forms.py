@@ -57,7 +57,6 @@ class DeliveryForm(forms.Form):
     postalCode = forms.IntegerField(required=True, label="Postal Code")
     paymentMethod = forms.ChoiceField(choices=PAYMENT_CHOICES, required=True, label="Payment Method")
 
-<<<<<<< HEAD
     def clean_houseNumber(self):
         house_number = self.cleaned_data.get('houseNumber')
         if house_number is not None and house_number <= 0:
@@ -69,7 +68,7 @@ class DeliveryForm(forms.Form):
         if postal_code is not None and postal_code <= 0:
             raise ValidationError("Postal code must be a positive integer.")
         return postal_code
-=======
+
 class PickupForm(forms.Form):
     PAYMENT_METHOD_CHOICES = [
         ('', 'Select a payment method'),
@@ -116,7 +115,6 @@ class PickupForm(forms.Form):
         if not re.match(r'^09\d{9}$', contact_number):
             raise ValidationError("Contact number must be a valid Philippine mobile number (09XXXXXXXXX).")
         return contact_number
->>>>>>> origin/chelle_django_ver
 
 class StaffCreateForm(forms.ModelForm):
     email = forms.EmailField(required=True, label="Email Address")

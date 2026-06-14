@@ -10,39 +10,26 @@ logger = logging.getLogger('security')
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-<<<<<<< HEAD
-from django.http import JsonResponse, HttpResponse
-=======
-from django.http import JsonResponse, HttpResponseRedirect
->>>>>>> origin/chelle_django_ver
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm, PasswordChangeForm
 from django.core.paginator import Paginator
-<<<<<<< HEAD
 from django.core.mail import send_mail
 from django.utils import timezone
 from datetime import timedelta
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
-
-from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, MFACode
-from bakery.forms import SignUpForm, DeliveryForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm, EmailChangeForm
-=======
-from django.utils import timezone
 from django.db import models
-from datetime import timedelta
-from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 import json
 
-from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, Payment, generate_order_reference_number
-from bakery.forms import SignUpForm, DeliveryForm, PickupForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm
+from bakery.models import Product, CartItem, Order, Receipt, UserProfile, AuditLog, Payment, generate_order_reference_number, MFACode
+from bakery.forms import SignUpForm, DeliveryForm, PickupForm, StaffCreateForm, StaffEditForm, ProductForm, OrderStatusForm, EmailChangeForm
 from bakery.paymongo_utils import create_paymongo_checkout, verify_paymongo_payment, deduct_stock_for_orders, process_webhook_event
->>>>>>> origin/chelle_django_ver
 from bakery.decorators import staff_required, admin_required
 from bakery.signals import get_client_ip
 from bakery.utils import generate_captcha_svg
@@ -89,7 +76,7 @@ def create_mfa_code(user):
     MFACode.objects.filter(user=user).delete()
     
     code = generate_mfa_code()
-    expires_at = timezone.now() + timedelta(minutes=10)
+    expires_at = timezone.now() + timedelta(minutes=2)
     
     mfa_obj = MFACode.objects.create(
         user=user,
@@ -117,7 +104,8 @@ def send_order_confirmation_email(receipt, orders):
         # Render HTML email template
         html_message = render_to_string('emails/order_confirmation.html', {
             'receipt': receipt,
-            'orders': orders
+            'orders': orders,
+            'settings': settings
         })
         
         # Send email
@@ -368,18 +356,8 @@ def cart_add(request):
         data = json.loads(request.body)
         name = data.get('name')
         quantity = int(data.get('quantity', 1))
-<<<<<<< HEAD
         if quantity <= 0:
             return JsonResponse({'message': 'Quantity must be greater than zero'}, status=400)
-        product = get_object_or_404(Product, name=name)
-        
-        cart_item, created = CartItem.objects.get_or_create(user=request.user, product=product)
-        if created:
-            cart_item.quantity = quantity
-        else:
-            cart_item.quantity += quantity
-        cart_item.save()
-=======
         product = get_object_or_404(Product, name=name)
         
         # Validation constants
@@ -445,7 +423,6 @@ def cart_add(request):
         else:
             cart_item.quantity = new_quantity
             cart_item.save()
->>>>>>> origin/chelle_django_ver
             
         return JsonResponse({'message': 'Item added to cart'})
     except Exception as e:
@@ -635,7 +612,7 @@ def checkout_view(request):
     total_price = Decimal('0.00')
     for item in cart_items:
         subtotal = item.product.price * item.quantity
-        total_price += float(subtotal)
+        total_price += subtotal
         
         # Update stock
         item.product.stock -= item.quantity
@@ -643,13 +620,14 @@ def checkout_view(request):
             item.product.is_available = False
         item.product.save()
         
-        for _ in range(item.quantity):
-            Order.objects.create(
-                user=request.user,
-                session_id=session_id,
-                item_name=item.product.name,
-                item_price=item.product.price
-            )
+        # Create a single order with quantity instead of multiple orders
+        Order.objects.create(
+            user=request.user,
+            session_id=session_id,
+            item_name=item.product.name,
+            item_price=item.product.price,
+            quantity=item.quantity
+        )
             
     request.session['total_price'] = str(total_price)
     cart_items.delete()
@@ -784,6 +762,7 @@ def payment_success_view(request):
                 remaining_balance=checkout_info['remaining_balance'],
                 pickup_availability_date=timezone.datetime.strptime(checkout_info['pickup_availability_date'], '%Y-%m-%d').date(),
                 reference_number=reference_number,
+                contact_number=checkout_info['contact_number'],
                 status='confirmed'
             )
             
@@ -1043,14 +1022,17 @@ def staff_orders(request):
         if receipt:
             order.customer_name = receipt.full_name or order.user.get_full_name()
             order.customer_email = receipt.user.email
-            order.customer_contact = receipt.contact_number if receipt.contact_number else (order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A')
-            order.payment_option_display = receipt.payment_option if receipt.payment_option else order.payment_option
+            order.customer_contact = order.contact_number if order.contact_number else receipt.contact_number if receipt.contact_number else (order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A')
+            order.payment_option_display = order.payment_option if order.payment_option else receipt.payment_option if receipt.payment_option else 'N/A'
         else:
             # Fallback to order data if no receipt exists
             order.customer_name = order.user.get_full_name()
             order.customer_email = order.user.email
-            order.customer_contact = order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A'
+            order.customer_contact = order.contact_number if order.contact_number else (order.user.userprofile.contactnumber if hasattr(order.user, 'userprofile') else 'N/A')
             order.payment_option_display = order.payment_option if order.payment_option else 'N/A'
+        
+        # Get updated by staff email
+        order.updated_by_email = order.updated_by.email if order.updated_by else 'N/A'
         
         # Calculate pickup date (3 days after order date)
         if order.pickup_availability_date:
@@ -1059,6 +1041,10 @@ def staff_orders(request):
             order.pickup_date_display = order.ordered_at + timedelta(days=3)
         else:
             order.pickup_date_display = None
+        
+        # Ensure quantity is set (default to 1 for old orders)
+        if not hasattr(order, 'quantity') or order.quantity is None:
+            order.quantity = 1
     
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
@@ -1085,6 +1071,7 @@ def move_to_processing(request, order_id):
         old_status = order.status
         order.status = 'processing'
         order.processed_at = timezone.now()
+        order.updated_by = request.user
         order.save()
         
         # Log audit
@@ -1117,6 +1104,7 @@ def move_to_claimed(request, order_id):
         old_status = order.status
         order.status = 'claimed'
         order.claimed_at = timezone.now()
+        order.updated_by = request.user
         order.save()
         
         # Log audit
@@ -1150,6 +1138,7 @@ def update_order_status(request, order_id):
         order = get_object_or_404(Order, id=order_id)
         old_status = order.status
         order.status = new_status
+        order.updated_by = request.user
         order.save()
         
         # Log audit

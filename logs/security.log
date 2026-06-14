@@ -32,3 +32,43 @@
 2026-06-14 16:44:09,089 [WARNING] security - MFA_VERIFY_FAILED | Reason: No MFA session variables found
 2026-06-14 16:52:00,843 [INFO] security - LOGIN_MFA_CHALLENGE | IP: 127.0.0.1 | User: bitejb6@gmail.com
 2026-06-14 16:52:58,228 [INFO] security - MFA_VERIFY_SUCCESS | IP: 127.0.0.1 | User: bitejb6@gmail.com
+2026-06-14 20:21:50,729 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: poculas.nna@gmail.com
+2026-06-14 20:22:02,120 [INFO] security - MFA_TOGGLED | User: poculas.nna@gmail.com | Enabled: True
+2026-06-14 20:30:41,175 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 6 orders today (max 3)
+2026-06-14 20:30:41,262 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 6 orders today (max 3)
+2026-06-14 20:35:26,381 [INFO] security - LOGOUT | User: poculas.nna@gmail.com
+2026-06-14 20:35:52,365 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: 
+2026-06-14 20:37:24,558 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 24 from pending to Processing
+2026-06-14 20:37:27,798 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 24 from processing to Claimed
+2026-06-14 20:38:02,986 [INFO] security - LOGOUT | User: 
+2026-06-14 20:38:20,442 [INFO] security - LOGIN_MFA_CHALLENGE | IP: 127.0.0.1 | User: poculas.nna@gmail.com
+2026-06-14 20:43:30,953 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: 
+2026-06-14 20:53:20,541 [INFO] security - LOGOUT | User: 
+2026-06-14 21:13:08,342 [INFO] security - LOGOUT | User: poculas.nna@gmail.com
+2026-06-14 21:13:26,684 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: 
+2026-06-14 21:16:47,407 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 29 from pending to Processing
+2026-06-14 21:22:49,503 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 27 from pending to Processing
+2026-06-14 21:22:49,506 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 26 from pending to Processing
+2026-06-14 21:22:49,507 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 25 from pending to Processing
+2026-06-14 21:22:49,597 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 28 from pending to Processing
+2026-06-14 21:22:58,670 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 29 from processing to Claimed
+2026-06-14 21:22:58,674 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 26 from processing to Claimed
+2026-06-14 21:22:58,678 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 25 from processing to Claimed
+2026-06-14 21:22:58,772 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 27 from processing to Claimed
+2026-06-14 21:22:58,773 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 28 from processing to Claimed
+2026-06-14 21:26:31,674 [INFO] security - LOGOUT | User: 
+2026-06-14 21:26:49,936 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: poculas.nna@gmail.com
+2026-06-14 21:27:00,072 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 5 orders today (max 3)
+2026-06-14 21:27:00,179 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 5 orders today (max 3)
+2026-06-14 21:27:06,792 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 5 orders today (max 3)
+2026-06-14 21:27:06,792 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 5 orders today (max 3)
+2026-06-14 21:28:17,159 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 8 orders today (max 3)
+2026-06-14 21:28:17,160 [INFO] security - AUDIT_LOG | Action: daily_order_limit_failed | User: rochelle | IP: 127.0.0.1 | Description: Attempted checkout with 8 orders today (max 3)
+2026-06-14 21:43:31,154 [INFO] security - LOGOUT | User: poculas.nna@gmail.com
+2026-06-14 21:43:48,877 [WARNING] security - LOGIN_FAILED | IP: 127.0.0.1 | Reason: Invalid credentials | Email: poculas.nna@gmail.com
+2026-06-14 21:44:06,473 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: poculas.nna@gmail.com
+2026-06-14 21:44:52,578 [INFO] security - LOGOUT | User: poculas.nna@gmail.com
+2026-06-14 21:45:09,879 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: 
+2026-06-14 21:45:14,737 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 43 from pending to Processing
+2026-06-14 21:45:19,975 [INFO] security - AUDIT_LOG | Action: order_status_update | User: mrasalucop01@tip.edu.ph | IP: 127.0.0.1 | Description: Moved order 43 from processing to Claimed
+2026-06-14 21:45:24,056 [INFO] security - LOGOUT | User: 

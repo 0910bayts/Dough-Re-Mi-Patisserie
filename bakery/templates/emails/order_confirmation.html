@@ -229,7 +229,7 @@
                 {% for order in orders %}
                 <div class="order-item">
                     <span class="name">{{ order.item_name }}</span>
-                    <span class="quantity">x{{ orders|length }}</span>
+                    <span class="quantity">x{{ order.quantity|default:1 }}</span>
                     <span class="price">₱{{ order.item_price }}</span>
                 </div>
                 {% endfor %}
@@ -277,7 +277,7 @@
 
         <div class="footer">
             <p>For inquiries, please contact us at:</p>
-            <p>Email: noreply@je-cole-bakery.com</p>
+            <p>Email: {{ settings.DEFAULT_FROM_EMAIL }}</p>
             <p>Thank you for your order!</p>
         </div>
     </div>

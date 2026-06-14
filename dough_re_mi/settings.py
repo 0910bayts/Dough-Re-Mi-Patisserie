@@ -12,16 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-mu@bhbfhm@ybcy=t1_(-)+0-3n%4sqe)a2v(x!hz_cmz=)k2pm')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
-# Add ngrok URL for testing
-if 'booth-acetone-clumsy.ngrok-free.dev' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('booth-acetone-clumsy.ngrok-free.dev')
 
-# CSRF Trusted Origins for ngrok
-CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-    'https://booth-acetone-clumsy.ngrok-free.dev'
-]
+# CSRF Trusted Origins - use environment variable for production
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://127.0.0.1:8000,http://localhost:8000').split(',')
 
 # CSRF Cookie Settings
 CSRF_COOKIE_SECURE = False  # Allow non-HTTPS for development
@@ -89,6 +82,7 @@ WSGI_APPLICATION = 'dough_re_mi.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # Database configuration - supports both SQLite and PostgreSQL
+# For Render, use PostgreSQL via environment variables
 DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
 DB_NAME = os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3')
 DB_USER = os.getenv('DB_USER', '')
@@ -136,15 +130,19 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = os.getenv('STATIC_URL', 'static/')
 STATICFILES_DIRS = [
     BASE_DIR / 'bakery' / 'static',
     BASE_DIR / 'images',  # Add project root images folder
 ]
 
+# Static root for production (collectstatic)
+STATIC_ROOT = Path(os.getenv('STATIC_ROOT', BASE_DIR / 'staticfiles'))
+
 # Media files (User uploaded content)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# For Render, media files should be served through cloud storage or similar
+MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT', BASE_DIR / 'media'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -217,17 +215,21 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-<<<<<<< HEAD
+# PayMongo Payment Gateway Configuration
+PAYMONGO_PUBLIC_KEY = os.getenv('PAYMONGO_PUBLIC_KEY', '')
+PAYMONGO_SECRET_KEY = os.getenv('PAYMONGO_SECRET_KEY', '')
+PAYMONGO_API_URL = os.getenv('PAYMONGO_API_URL', 'https://api.paymongo.com/v1')
+PAYMONGO_WEBHOOK_SECRET = os.getenv('PAYMONGO_WEBHOOK_SECRET', '')
+BASE_URL = os.getenv('BASE_URL', 'http://127.0.0.1:8000')
+
 # Email Configuration
-# Replace the placeholders with your actual Gmail account credentials.
-# For Gmail, use an App Password and not your regular login password.
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'mjbbite@tip.edu.ph')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'rfdoigkplrlgktos')
-DEFAULT_FROM_EMAIL = f"Je'Cole Bakery <{EMAIL_HOST_USER}>"
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@je-cole-bakery.com')
 SERVER_EMAIL = EMAIL_HOST_USER
 
 # Cache configuration (STRIDE mitigation: Shared Cache Backend)
@@ -250,8 +252,12 @@ else:
     }
 
 # Logging Configuration (STRIDE mitigation: Secure Logger & Decoupled Audit Trail)
-LOGS_DIR = BASE_DIR / 'logs'
-os.makedirs(LOGS_DIR, exist_ok=True)
+# Use environment variable for logs directory, default to logs/ in project root
+LOGS_DIR = Path(os.getenv('LOGS_DIR', BASE_DIR / 'logs'))
+
+# Only create logs directory if it doesn't exist and we're not on Render (ephemeral filesystem)
+if not os.getenv('RENDER'):  # RENDER env var is automatically set by Render
+    os.makedirs(LOGS_DIR, exist_ok=True)
 
 LOGGING = {
     'version': 1,
@@ -271,56 +277,44 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-        'security_file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOGS_DIR / 'security.log',
-            'maxBytes': 1024 * 1024 * 5,  # 5MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-        },
-        'error_file': {
-            'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOGS_DIR / 'errors.log',
-            'maxBytes': 1024 * 1024 * 5,  # 5MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-        },
     },
     'loggers': {
         'security': {
-            'handlers': ['security_file', 'console'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.security': {
-            'handlers': ['security_file', 'console'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['error_file', 'console'],
+            'handlers': ['console'],
             'level': 'ERROR',
             'propagate': False,
         },
     },
 }
 
-=======
-# PayMongo Payment Gateway Configuration
-PAYMONGO_PUBLIC_KEY = os.getenv('PAYMONGO_PUBLIC_KEY', '')
-PAYMONGO_SECRET_KEY = os.getenv('PAYMONGO_SECRET_KEY', '')
-PAYMONGO_API_URL = 'https://api.paymongo.com/v1'
-PAYMONGO_WEBHOOK_SECRET = os.getenv('PAYMONGO_WEBHOOK_SECRET', '')
-BASE_URL = os.getenv('BASE_URL', 'http://127.0.0.1:8000')
-
-# Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@je-cole-bakery.com')
->>>>>>> origin/chelle_django_ver
+# Add file handlers only if not on Render (ephemeral filesystem)
+if not os.getenv('RENDER'):
+    LOGGING['handlers']['security_file'] = {
+        'level': 'INFO',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': LOGS_DIR / 'security.log',
+        'maxBytes': 1024 * 1024 * 5,  # 5MB
+        'backupCount': 5,
+        'formatter': 'verbose',
+    }
+    LOGGING['handlers']['error_file'] = {
+        'level': 'ERROR',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': LOGS_DIR / 'errors.log',
+        'maxBytes': 1024 * 1024 * 5,  # 5MB
+        'backupCount': 5,
+        'formatter': 'verbose',
+    }
+    LOGGING['loggers']['security']['handlers'] = ['security_file', 'console']
+    LOGGING['loggers']['django.security']['handlers'] = ['security_file', 'console']
+    LOGGING['loggers']['django.request']['handlers'] = ['error_file', 'console']

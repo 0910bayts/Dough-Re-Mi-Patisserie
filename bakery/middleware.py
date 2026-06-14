@@ -8,7 +8,7 @@ class RequirePasswordMiddleware:
     def __call__(self, request):
         if request.user.is_authenticated and not request.user.has_usable_password():
             # Allow access to set password page, logout, and static/admin
-            allowed_paths = ['/set-password.php', '/logout.php', '/admin/', '/static/', '/media/']
+            allowed_paths = ['/set-password', '/logout', '/admin/', '/static/', '/media/']
             if not any(request.path.startswith(path) for path in allowed_paths):
                 return redirect('set_password')
         
@@ -24,7 +24,7 @@ class RoleBasedRedirectMiddleware:
 
     def __call__(self, request):
         # Only apply to login redirect
-        if request.path == '/login.php' and request.user.is_authenticated:
+        if request.path == '/login' and request.user.is_authenticated:
             if request.user.is_superuser:
                 return redirect('/admin/')
             elif hasattr(request.user, 'profile'):

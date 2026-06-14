@@ -2,10 +2,7 @@ import logging
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-<<<<<<< HEAD
 from datetime import timedelta
-=======
->>>>>>> origin/chelle_django_ver
 
 class UserProfile(models.Model):
     ROLE_CHOICES = [
@@ -101,6 +98,7 @@ class Order(models.Model):
     session_id = models.CharField(max_length=64)
     item_name = models.CharField(max_length=255)
     item_price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=1, help_text="Quantity of this item in the order")
     ordered_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     reference_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
@@ -109,8 +107,10 @@ class Order(models.Model):
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     remaining_balance = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     pickup_availability_date = models.DateField(null=True, blank=True)
+    contact_number = models.CharField(max_length=11, null=True, blank=True, help_text="Customer contact number")
     processed_at = models.DateTimeField(null=True, blank=True, help_text="Date and time when order was moved to Processing")
     claimed_at = models.DateTimeField(null=True, blank=True, help_text="Date and time when order was claimed")
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_orders', help_text="Staff member who last updated the order status")
 
     def __str__(self):
         return f"Order {self.id} for {self.user.username} ({self.status})"
@@ -230,7 +230,6 @@ class AuditLog(models.Model):
     def __str__(self):
         return f"{self.user.username if self.user else 'System'} - {self.action} at {self.timestamp}"
 
-<<<<<<< HEAD
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         try:
@@ -241,7 +240,7 @@ class AuditLog(models.Model):
             )
         except Exception:
             pass
-=======
+
 class InventoryLog(models.Model):
     """Track inventory changes for audit purposes"""
     CHANGE_TYPE_CHOICES = [
@@ -267,4 +266,3 @@ class InventoryLog(models.Model):
 
     def __str__(self):
         return f"{self.product.name}: {self.change_type} ({self.quantity_change}) at {self.timestamp}"
->>>>>>> origin/chelle_django_ver

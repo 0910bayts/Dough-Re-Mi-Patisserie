@@ -191,7 +191,7 @@
     <div class="code-info">
         <p><strong>Email Code</strong></p>
         <p>A 6-digit code has been sent to <strong>{{ user_email }}</strong></p>
-        <p style="margin-top: 10px; font-size: 0.85rem; color: #666;">The code will expire in 10 minutes.</p>
+        <p style="margin-top: 10px; font-size: 0.85rem; color: #666;">The code will expire in <span id="countdown">2:00</span> minutes.</p>
     </div>
 
     <form method="POST">
@@ -230,6 +230,28 @@
 
 {% block extra_js %}
 <script>
+    // Countdown timer
+    let timeLeft = 120; // 2 minutes in seconds
+    const countdownElement = document.getElementById('countdown');
+    
+    function updateCountdown() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timeLeft > 0) {
+            timeLeft--;
+            setTimeout(updateCountdown, 1000);
+        } else {
+            countdownElement.textContent = '0:00';
+            countdownElement.style.color = '#d32f2f';
+            countdownElement.style.fontWeight = 'bold';
+        }
+    }
+    
+    // Start countdown when page loads
+    updateCountdown();
+    
     // Auto-format numeric input
     document.getElementById('code').addEventListener('input', function(e) {
         // Remove any non-digit characters

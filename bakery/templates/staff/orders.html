@@ -41,15 +41,18 @@
                     <th>Email</th>
                     <th>Contact Number</th>
                     <th>Item</th>
+                    <th>Quantity</th>
                     <th>Price</th>
                     <th>Date & Time Ordered</th>
                     <th>Payment Option</th>
                     <th>Pickup Date</th>
                     {% if active_tab == 'processing' %}
                     <th>Date & Time of Process</th>
+                    <th>Updated By</th>
                     {% endif %}
                     {% if active_tab == 'claimed' %}
                     <th>Date & Time Claimed</th>
+                    <th>Updated By</th>
                     {% endif %}
                     {% if active_tab == 'pending' or active_tab == 'processing' %}
                     <th>Action</th>
@@ -64,6 +67,7 @@
                     <td>{{ order.customer_email }}</td>
                     <td>{{ order.customer_contact }}</td>
                     <td>{{ order.item_name }}</td>
+                    <td>{{ order.quantity }}</td>
                     <td>₱{{ order.item_price }}</td>
                     <td>{{ order.ordered_at|date:"M d, Y H:i" }}</td>
                     <td>
@@ -90,6 +94,7 @@
                             N/A
                         {% endif %}
                     </td>
+                    <td>{{ order.updated_by_email }}</td>
                     {% endif %}
                     {% if active_tab == 'claimed' %}
                     <td>
@@ -99,10 +104,11 @@
                             N/A
                         {% endif %}
                     </td>
+                    <td>{{ order.updated_by_email }}</td>
                     {% endif %}
                     {% if active_tab == 'pending' %}
                     <td>
-                        <button class="btn btn-sm btn-primary" 
+                        <button class="btn btn-sm btn-primary"
                                 onclick="moveToProcessing({{ order.id }})"
                                 style="background-color: rgb(121, 65, 28); border-color: rgb(121, 65, 28);">
                             Processing
@@ -111,7 +117,7 @@
                     {% endif %}
                     {% if active_tab == 'processing' %}
                     <td>
-                        <button class="btn btn-sm btn-success" 
+                        <button class="btn btn-sm btn-success"
                                 onclick="moveToClaimed({{ order.id }})">
                             Claimed
                         </button>
@@ -120,7 +126,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="10" class="text-center">No orders found.</td>
+                    <td colspan="{% if active_tab == 'pending' %}11{% else %}12{% endif %}" class="text-center">No orders found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

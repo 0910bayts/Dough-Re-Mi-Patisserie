@@ -1,84 +1,166 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Sign Up{% endblock %}
+{% block title %}Dough Re Mi Patisserie - Sign Up{% endblock %}
+
+{% block extra_head %}
+<style>
+.password-requirements-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.password-requirements-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 12px 0;
+    letter-spacing: -0.01em;
+}
+
+.password-requirements-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.password-requirements-list li {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #64748b;
+    transition: all 0.2s ease;
+    line-height: 1.4;
+}
+
+.password-requirements-list li .icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.password-requirements-list li.satisfied {
+    color: #059669;
+}
+
+.password-requirements-list li.satisfied .icon {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.password-requirements-list li.satisfied .icon::before {
+    content: '✓';
+}
+
+.password-requirements-list li:not(.satisfied) .icon::before {
+    content: '○';
+}
+
+@media (max-width: 640px) {
+    .password-requirements-card {
+        padding: 12px;
+    }
+    
+    .password-requirements-list {
+        gap: 6px;
+    }
+    
+    .password-requirements-list li {
+        font-size: 0.8125rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
     <section>
-    <div class="registration">
-        <h1>Sign Up</h1>
-        <p>Already have an account? <a href="{% url 'login' %}">Log in</a> instead</p>
+        <div class="registration">
+            <h1>Sign Up</h1>
+            <p>Already have an account? <a href="{% url 'login' %}">Log in</a> instead</p>
 
-        {% if messages %}
-            <ul class="messages">
-                {% for message in messages %}
-                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+            {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
-        <form id="signup" action="{% url 'signup' %}" method="POST">
-            {% csrf_token %}
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <div>
-                    <label for="Fname" style="display: block; margin-bottom: 2px;"><h4>First Name:</h4></label>
-                    <input type="text" name="first_name" id="Fname" required style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div>
-                    <label for="Lname" style="display: block; margin-bottom: 2px;"><h4>Last Name:</h4></label>
-                    <input type="text" name="last_name" id="Lname" required style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div>
-                    <label for="number" style="display: block; margin-bottom: 2px;"><h4>Phone Number:</h4></label>
-                    <input type="number" name="contactnumber" id="number" maxlength="11" title="Please enter exactly 11 digits." required style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div>
-                    <label for="email" style="display: block; margin-bottom: 2px;"><h4>Email Address:</h4></label>
-                    <input type="email" name="email" id="email" required style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div>
-                    <label for="pass" style="display: block; margin-bottom: 2px;"><h4>Password:</h4></label>
-                    <input type="password" name="password" id="pass" required style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;" oninput="checkPasswordRequirements()">
-                </div>
-                <div id="password-requirements" style="font-size: 0.75rem; line-height: 1.3; margin-top: 3px; margin-bottom: 5px; color: #666;">
-                    <p style="margin: 0; font-weight: 500;">Password must contain:</p>
-                    <p id="req-length" style="margin: 1px 0; color: #999;">✗ 8+ characters</p>
-                    <p id="req-uppercase" style="margin: 1px 0; color: #999;">✗ Uppercase letter</p>
-                    <p id="req-lowercase" style="margin: 1px 0; color: #999;">✗ Lowercase letter</p>
-                    <p id="req-number" style="margin: 1px 0; color: #999;">✗ Number</p>
-                    <p id="req-special" style="margin: 1px 0; color: #999;">✗ Special character</p>
-                </div>
-                <div style="margin-top: 5px;">
-                    <label for="pass2" style="display: block; margin-bottom: 2px;"><h4>Confirm Password:</h4></label>
-                    <input type="password" name="confirm_password" id="pass2" required style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;" oninput="checkPasswordMatch()">
-                </div>
-                <div id="password-match" style="font-size: 0.75rem; margin-top: 3px; display: none;">
-                    <p id="req-match" style="margin: 0; color: #dc3545;">✗ Passwords do not match</p>
+            <form id="signup" action="{% url 'signup' %}" method="POST">
+                {% csrf_token %}
+                <label for="Fname"><h4>First Name:</h4></label>
+                <input type="text" name="first_name" id="Fname" required>
+                <br><br>
+                <label for="Lname"><h4>Last Name:</h4></label>
+                <input type="text" name="last_name" id="Lname" required>
+                <br><br>
+                <label for="number"><h4>Phone Number:</h4></label>
+                <input type="number" name="contactnumber" id="number" maxlength="11" title="Please enter exactly 11 digits." required>
+                <br><br>
+                <label for="email"><h4>Email Address:</h4></label>
+                <input type="email" name="email" id="email" required>
+                <br><br>
+                <label for="pass"><h4>Password:</h4></label>
+                <input type="password" name="password" id="pass" required oninput="checkPasswordRequirements()">
+                <br>
+                <div id="password-requirements" class="password-requirements-card">
+                    <p class="password-requirements-title">Password Requirements</p>
+                    <ul class="password-requirements-list">
+                        <li id="req-length"><span class="icon"></span>8+ characters</li>
+                        <li id="req-uppercase"><span class="icon"></span>Uppercase letter</li>
+                        <li id="req-lowercase"><span class="icon"></span>Lowercase letter</li>
+                        <li id="req-number"><span class="icon"></span>Number</li>
+                        <li id="req-special"><span class="icon"></span>Special character</li>
+                    </ul>
                 </div>
                 
-                <div class="captcha-wrapper" style="margin-top: 15px; margin-bottom: 15px;">
+                <label for="pass2"><h4>Confirm Password:</h4></label>
+                <input type="password" name="confirm_password" id="pass2" required oninput="checkPasswordMatch()">
+                
+                <div id="password-match" style="font-size: 0.85rem; margin-top: 10px; display: none;">
+                    <p id="req-match" style="margin: 0; color: #dc3545; font-weight: 500;">❌ Passwords do not match</p>
+                </div>
+                
+                <div class="captcha-wrapper" style="margin-top: 25px; margin-bottom: 15px;">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                         <img id="captcha-img" src="{% url 'captcha_image' %}" alt="CAPTCHA" style="height: 45px; border: 1px solid #ccc; border-radius: 4px; display: block;">
                         <button type="button" onclick="refreshCaptcha()" class="btn btn-sm btn-outline-secondary" style="height: 45px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 12px; border-radius: 4px; border: 1px solid #ccc; background-color: #f8f9fa; cursor: pointer;">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
-                    <label for="captcha" style="display: block; margin-bottom: 2px;"><h4>Verification Code:</h4></label>
-                    <input type="text" name="captcha" id="captcha" placeholder="Enter code above" required autocomplete="off" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    <label for="captcha"><h4>Verification Code:</h4></label>
+                    <input type="text" name="captcha" id="captcha" placeholder="Enter code above" required autocomplete="off" style="width: 100%; padding: 12px 20px; box-sizing: border-box; border: none; border-bottom: 2px solid black;">
                 </div>
-            </div>
-            
-            <button type="submit" name="register" id="submit"><h3>Sign Up</h3></button>
-        </form>
 
-        <!-- Google OAuth Signup Button -->
-        <div class="social-login" style="margin-top: 30px;">
-            <a href="/accounts/google/login/" class="btn btn-outline-dark w-100" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px;">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 20px; height: 20px;">
-                <span>Sign up with Google</span>
-            </a>
+                <button type="submit" name="register" id="submit"><h3>Sign Up</h3></button>
+            </form>
+
+            <!-- Google OAuth Signup Button -->
+            <div class="social-login" style="margin-top: 30px;">
+                <a href="/accounts/google/login/" class="btn btn-outline-dark w-100" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px;">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 20px; height: 20px;">
+                    <span>Sign up with Google</span>
+                </a>
+            </div>
         </div>
-    </div>
     </section>
 
 <script>
@@ -95,51 +177,41 @@ function checkPasswordRequirements() {
     // Check length
     const lengthReq = document.getElementById('req-length');
     if (password.length >= 8) {
-        lengthReq.style.color = '#28a745';
-        lengthReq.innerHTML = '✓ 8+ characters';
+        lengthReq.classList.add('satisfied');
     } else {
-        lengthReq.style.color = '#999';
-        lengthReq.innerHTML = '✗ 8+ characters';
+        lengthReq.classList.remove('satisfied');
     }
     
     // Check uppercase
     const uppercaseReq = document.getElementById('req-uppercase');
     if (/[A-Z]/.test(password)) {
-        uppercaseReq.style.color = '#28a745';
-        uppercaseReq.innerHTML = '✓ Uppercase letter';
+        uppercaseReq.classList.add('satisfied');
     } else {
-        uppercaseReq.style.color = '#999';
-        uppercaseReq.innerHTML = '✗ Uppercase letter';
+        uppercaseReq.classList.remove('satisfied');
     }
     
     // Check lowercase
     const lowercaseReq = document.getElementById('req-lowercase');
     if (/[a-z]/.test(password)) {
-        lowercaseReq.style.color = '#28a745';
-        lowercaseReq.innerHTML = '✓ Lowercase letter';
+        lowercaseReq.classList.add('satisfied');
     } else {
-        lowercaseReq.style.color = '#999';
-        lowercaseReq.innerHTML = '✗ Lowercase letter';
+        lowercaseReq.classList.remove('satisfied');
     }
     
     // Check number
     const numberReq = document.getElementById('req-number');
     if (/[0-9]/.test(password)) {
-        numberReq.style.color = '#28a745';
-        numberReq.innerHTML = '✓ Number';
+        numberReq.classList.add('satisfied');
     } else {
-        numberReq.style.color = '#999';
-        numberReq.innerHTML = '✗ Number';
+        numberReq.classList.remove('satisfied');
     }
     
     // Check special character
     const specialReq = document.getElementById('req-special');
     if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        specialReq.style.color = '#28a745';
-        specialReq.innerHTML = '✓ Special character';
+        specialReq.classList.add('satisfied');
     } else {
-        specialReq.style.color = '#999';
-        specialReq.innerHTML = '✗ Special character';
+        specialReq.classList.remove('satisfied');
     }
 }
 
@@ -155,7 +227,7 @@ function checkPasswordMatch() {
         matchDiv.style.display = 'none';
     } else {
         matchDiv.style.display = 'block';
-        matchReq.style.color = 'red';
+        matchReq.style.color = '#dc3545';
         matchReq.innerHTML = '❌ Passwords do not match';
     }
 }
