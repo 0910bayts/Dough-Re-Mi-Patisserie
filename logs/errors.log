@@ -3,3 +3,72 @@
 2026-06-13 10:37:52,369 [ERROR] django.request - TEST_LOG_MESSAGE_ERROR
 2026-06-13 10:42:58,929 [ERROR] django.request - TEST_LOG_MESSAGE_ERROR
 2026-06-13 10:46:12,535 [ERROR] django.request - TEST_LOG_MESSAGE_ERROR
+2026-06-14 15:38:38,965 [ERROR] django.request - Internal Server Error: /login.php
+Traceback (most recent call last):
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 329, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: django_cache_table
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\bakery\views.py", line 203, in login_view
+    attempts = cache.get(rate_limit_key, 0)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\core\cache\backends\db.py", line 52, in get
+    return self.get_many([key], version).get(key, default)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\core\cache\backends\db.py", line 68, in get_many
+    cursor.execute(
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 329, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: no such table: django_cache_table
+2026-06-14 16:33:30,450 [ERROR] django.request - Internal Server Error: /verify-mfa.php
+Traceback (most recent call last):
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\contrib\auth\__init__.py", line 129, in login
+    backend = backend or user.backend
+                         ^^^^^^^^^^^^
+AttributeError: 'User' object has no attribute 'backend'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\bakery\views.py", line 802, in verify_mfa
+    auth_login(request, user)
+  File "C:\Users\Joy\Downloads\Je-Cole-Bakery-Php\Je-Cole-Bakery-Php\.venv\Lib\site-packages\django\contrib\auth\__init__.py", line 135, in login
+    raise ValueError(
+ValueError: You have multiple authentication backends configured and therefore must provide the `backend` argument or set the `backend` attribute on the user.

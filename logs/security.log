@@ -19,3 +19,16 @@
 2026-06-13 10:47:26,134 [INFO] security - LOGOUT | User: jecoleishome@gmail.com
 2026-06-13 10:53:05,139 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: jecoleishome@gmail.com
 2026-06-13 10:54:16,408 [INFO] security - LOGOUT | User: jecoleishome@gmail.com
+2026-06-14 15:38:12,555 [INFO] security - LOGOUT | User: mjbbite@tip.edu.ph
+2026-06-14 15:39:53,034 [INFO] security - LOGIN_MFA_CHALLENGE | IP: 127.0.0.1 | User: bitejb6@gmail.com
+2026-06-14 16:16:12,145 [INFO] security - LOGIN_SUCCESS | IP: 127.0.0.1 | User: mjbbite@tip.edu.ph
+2026-06-14 16:32:39,716 [INFO] security - LOGOUT | User: mjbbite@tip.edu.ph
+2026-06-14 16:33:08,917 [INFO] security - LOGIN_MFA_CHALLENGE | IP: 127.0.0.1 | User: bitejb6@gmail.com
+2026-06-14 16:43:14,988 [WARNING] security - MFA_VERIFY_FAILED | IP: 127.0.0.1 | User: mfauser@example.com | Reason: Incorrect code submitted
+2026-06-14 16:43:15,018 [WARNING] security - MFA_VERIFY_FAILED | IP: 127.0.0.1 | User: mfauser@example.com | Reason: Incorrect code submitted
+2026-06-14 16:43:15,026 [WARNING] security - MFA_VERIFY_FAILED | IP: 127.0.0.1 | User: mfauser@example.com | Reason: Incorrect code submitted
+2026-06-14 16:43:15,033 [WARNING] security - MFA_VERIFY_FAILED | IP: 127.0.0.1 | User: mfauser@example.com | Reason: Incorrect code submitted
+2026-06-14 16:43:15,040 [WARNING] security - MFA_LOCKOUT | IP: 127.0.0.1 | User: mfauser@example.com | Reason: Max failed 2FA attempts
+2026-06-14 16:44:09,089 [WARNING] security - MFA_VERIFY_FAILED | Reason: No MFA session variables found
+2026-06-14 16:52:00,843 [INFO] security - LOGIN_MFA_CHALLENGE | IP: 127.0.0.1 | User: bitejb6@gmail.com
+2026-06-14 16:52:58,228 [INFO] security - MFA_VERIFY_SUCCESS | IP: 127.0.0.1 | User: bitejb6@gmail.com

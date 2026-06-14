@@ -4,6 +4,8 @@ import random
 import string
 from decimal import Decimal
 
+from dough_re_mi import settings
+
 logger = logging.getLogger('security')
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
@@ -54,7 +56,7 @@ Dough Re Mi Patisserie Team
         send_mail(
             subject,
             message,
-            'noreply@doughremipatisserie.com',
+            settings.EMAIL_HOST_USER,
             [user.email],
             fail_silently=False,
         )
@@ -797,7 +799,7 @@ def verify_mfa(request):
             # Check if code matches
             if mfa_code.code == code:
                 # Code is correct, log in the user
-                auth_login(request, user)
+                auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 logger.info(f"MFA_VERIFY_SUCCESS | IP: {client_ip} | User: {user.email}")
                 
                 # Clean up MFA code and cached attempts
